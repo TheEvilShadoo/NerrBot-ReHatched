@@ -1,2 +1,2 @@
 # NerrBot-Rehatched
-The all new NerrBot running on a modified version of DigiTerminal
+The all new NerrBot is finally here! Inspired by DigiTerminal and the original NerrBot by Gold Prognosticus.
