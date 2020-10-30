@@ -284,7 +284,7 @@ class Digibutter(BaseNamespace):
             """
             Posts the about message to the latest topic in the current room
             """
-            reply_text = "--NerrBot: Rehatched--\nVersion: 0.1 Alpha\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus" % counter.count
+            reply_text = "--NerrBot: Rehatched--\nVersion: 0.1 Alpha\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus." % counter.count
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
