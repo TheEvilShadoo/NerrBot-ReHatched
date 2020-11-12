@@ -1,7 +1,7 @@
 import colorama
 colorama.init()
 
-print(colorama.Fore.GREEN + "===================================================NerrBot: RH v0.1.0===================================================" + colorama.Fore.LIGHTBLUE_EX + """
+print(colorama.Fore.GREEN + "====================================================NerrBot: RH v0.2====================================================" + colorama.Fore.LIGHTBLUE_EX + """
 
 
                                     _______________________________________________ 
