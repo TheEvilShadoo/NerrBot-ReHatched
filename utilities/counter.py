@@ -1,9 +1,8 @@
 import time
-import threading
 
 count = 0
 
-def start():
+def counter():
     # Variables to keep track and display
     seconds = 0
     minutes = 0
@@ -11,8 +10,7 @@ def start():
     days = 0
 
     # Start Timer
-    timeLoop = True
-    while timeLoop:
+    while True:
         global count
         count = str(days) + " days, " + str(hours) + " hours, " + str(minutes) + " minutes and " + str(seconds) + " seconds"
         time.sleep(1)
@@ -26,7 +24,3 @@ def start():
         if hours == 24:
             hours = 0
             days += 1
-
-counter_thread = threading.Thread(target= start)
-
-counter_thread.start()
