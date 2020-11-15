@@ -1,7 +1,7 @@
 import colorama
 colorama.init()
 
-print(colorama.Fore.GREEN + "====================================================NerrBot: RH v0.2====================================================" + colorama.Fore.LIGHTBLUE_EX + """
+print(colorama.Fore.GREEN + "====================================================NerrBot: RH v1.0====================================================" + colorama.Fore.LIGHTBLUE_EX + """
 
 
                                     _______________________________________________ 
@@ -31,18 +31,23 @@ print(colorama.Fore.GREEN + "===================================================
                                                                                                    |___/             """ + colorama.Fore.RESET)
 
 import logging
+import threading
+import random
+import datetime
+import pytz
 import json5
 from socketIO_client import SocketIO, BaseNamespace
 
-from utilities import counter, dice, yesno
+import utilities.counter as counter
 
 # Logging Configuration
 logging.basicConfig(format = "%(asctime)s: %(levelname)s: %(name)s: %(message)s", datefmt='%m/%d/%Y %H:%M:%S', filename='NerrBot RH.log', filemode='w', level = logging.DEBUG)
 
 class Digibutter(BaseNamespace):
-    """
-    Digibutter Socket.io Event Definitions
-    """
+    # Define Class Variables
+    online_user_list = []
+
+    # Digibutter Socket.io Event Definitions
     def on_connect(self):
         logging.info('A connection with the Digibutter websocket has been established.')
         print('\n> A connection with the Digibutter websocket has been established.')
@@ -55,6 +60,8 @@ class Digibutter(BaseNamespace):
         sio.emit("posts:index", {"topic": False, "room": "sidebar", "topicsOnly": False, "source": "db"}, Digibutter.on_the_dump_index_response)
         sio.wait(seconds=.2)
         sio.emit("posts:chats", {"room": "sidebar"}, Digibutter.on_NerrChat_chatlog_response)
+        counter_thread = threading.Thread(target=counter.counter)
+        counter_thread.start()
         sio.emit("posts:create", {"content":"Ready.","post_type":"","roomId":"sidebar","source":"db"})
 
     def on_authentication(self):
@@ -66,8 +73,17 @@ class Digibutter(BaseNamespace):
         print('\n> The Digibutter websocket has closed the connection.')
 
     def on_reconnect(self):
-        logging.warning('Reconnected to the Digibutter websocket.')
+        logging.info('Reconnected to the Digibutter websocket.')
         print('\n> Reconnected to the Digibutter websocket.')
+        Digibutter.authenticate(BaseNamespace)
+        sio.wait(seconds=.2)
+        sio.emit("posts:index", {"topic": False, "room": "db", "topicsOnly": False, "source": "db"}, Digibutter.on_all_posts_index_response)
+        sio.wait(seconds=.2)
+        sio.emit("posts:index", {"topic": False, "room": "nf", "topicsOnly": False, "source": "db"}, Digibutter.on_gaming_news_index_response)
+        sio.wait(seconds=.2)
+        sio.emit("posts:index", {"topic": False, "room": "sidebar", "topicsOnly": False, "source": "db"}, Digibutter.on_the_dump_index_response)
+        sio.wait(seconds=.2)
+        sio.emit("posts:chats", {"room": "sidebar"}, Digibutter.on_NerrChat_chatlog_response)
         sio.emit("posts:create", {"content":"I disconnected unexpectedly there, sorry!","post_type":"","roomId":"sidebar","source":"db"})
 
     def on_all_posts_index_response(self):
@@ -183,11 +199,118 @@ class Digibutter(BaseNamespace):
             post_type = None
         Digibutter.do_logic(Digibutter, latest_post, id, room_id, content, post_type)
 
+    def on_userupdate(self):
+        online_user_index = json5.loads(str(self))
+        for user in online_user_index:
+            Digibutter.online_user_list.append(user["name"])
+
     def authenticate(self):
         logging.info("Attempting to login...")
         print("\n> Attempting to login...")
         sio.emit("ready", Digibutter.on_authentication(BaseNamespace))
 
+    class tictactoe:
+        """
+        Tictactoe Data Subclass
+        """
+        player = None
+        turn = None
+        player_symbol = None
+        NerrBot_symbol = None
+        values = [' ' for x in range(9)]
+        tictactoe_board = f"""     |     |     
+  {values[0]}  |  {values[1]}  |  {values[2]}  
+_____|_____|_____
+     |     |     
+  {values[3]}  |  {values[4]}  |  {values[5]}  
+_____|_____|_____
+     |     |     
+  {values[6]}  |  {values[7]}  |  {values[8]}  
+     |     |     """
+        tictactoe_game = None
+
+        def find_player_move(self, x_coordinate, y_coordinate):
+            if x_coordinate == 0:
+                if y_coordinate == 0:
+                    move = 7
+                    return move
+                elif y_coordinate == 1:
+                    move = 4
+                    return move
+                elif y_coordinate == 2:
+                    move = 1
+                    return move
+            elif x_coordinate == 1:
+                if y_coordinate == 0:
+                    move = 8
+                    return move
+                elif y_coordinate == 1:
+                    move = 5
+                    return move
+                elif y_coordinate == 2:
+                    move = 2
+                    return move
+            elif x_coordinate == 2:
+                if y_coordinate == 0:
+                    move = 9
+                    return move
+                elif y_coordinate == 1:
+                    move = 6
+                    return move
+                elif y_coordinate == 2:
+                    move = 3
+                    return move
+
+        def find_NerrBot_move():
+            possible_moves = [x for x, letter in enumerate(Digibutter.tictactoe.values) if letter == " "]
+            move = 0
+
+            for letter in ['O', 'X']:
+                for x in possible_moves:
+                    values_copy = Digibutter.tictactoe.values[:]
+                    values_copy[x] = letter
+                    if Digibutter.tictactoe.is_winner(Digibutter.tictactoe, values_copy, letter):
+                        move = x
+                        return move
+
+            open_corners = []
+            for x in possible_moves:
+                if x in [1, 3, 7, 9]:
+                    open_corners.append(x)
+            if len(open_corners) > 0:
+                move = random.choice(open_corners)
+                return move
+
+            if 5 in possible_moves:
+                move = 5
+                return move
+
+            open_edges = []
+            for x in possible_moves:
+                if x in [2, 4, 6, 8]:
+                    open_edges.append(x)
+            if len(open_edges) > 0:
+                move = random.choice(open_edges)
+                
+            return move
+
+        def is_winner(self, values, symbol):
+            return (values[1] == symbol and values[2] == symbol and values[3] == symbol) or (
+            values[4] == symbol and values[5] == symbol and values[6] == symbol) or (
+            values[7] == symbol and values[8] == symbol and values[9] == symbol) or (
+            values[1] == symbol and values[4] == symbol and values[7] == symbol) or (
+            values[2] == symbol and values[5] == symbol and values[8] == symbol) or (
+            values[3] == symbol and values[6] == symbol and values[9] == symbol) or (
+            values[1] == symbol and values[5] == symbol and values[9] == symbol) or (
+            values[3] == symbol and values[5] == symbol and values[7] == symbol)
+
+        def is_board_full(self, values):
+            if Digibutter.tictactoe.values.count(" ") > 0:
+                return False
+            else:
+                return True
+
+    # Class Methods
     def do_logic(self, latest_post, id, room_id, content, post_type):
         """
         Determines the response message that NerrBot: ReHatched should reply with and posts the response message as a reply to the latest message in the current room
@@ -201,7 +324,9 @@ class Digibutter(BaseNamespace):
                 elif content == "!rh help yesno":
                     Digibutter.responses.help_yesno_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content == "!rh help rate":
-                    Digibutter.responses.not_implemented_yet_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_rate_message(Digibutter, latest_post, id, room_id, content, post_type)
+                elif content == "!rh help discord":
+                    Digibutter.responses.help_discord_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content == "!rh help chat":
                     Digibutter.responses.discord_only_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content == "!rh help relay":
@@ -211,38 +336,81 @@ class Digibutter(BaseNamespace):
                 elif content == "!rh help autorelay":
                     Digibutter.responses.discord_only_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content == "!rh help online":
-                    Digibutter.responses.not_implemented_yet_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_online_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content == "!rh help echo":
                     Digibutter.responses.help_echo_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content == "!rh help time":
-                    Digibutter.responses.not_implemented_yet_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_time_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content == "!rh help tictactoe":
-                    Digibutter.responses.not_implemented_yet_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_tictactoe_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content == "!rh help flip":
-                    Digibutter.responses.not_implemented_yet_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_flip_message(Digibutter, latest_post, id, room_id, content, post_type)
+                else:
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
             elif content[0:9] == "!rh yesno":
-                Digibutter.responses.yesno_message(Digibutter, latest_post, id, room_id, content, post_type)
+                if content == "!rh yesno" or "!rh yesno ":
+                    Digibutter.responses.specify_yesno_message(Digibutter, latest_post, id, room_id, content, post_type)
+                elif content[0:10] == "!rh yesno ":
+                    Digibutter.responses.yesno_message(Digibutter, latest_post, id, room_id, content, post_type)
+                else:
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+            elif content[0:8] == "!rh rate":
+                if content == "!rh rate" or "!rh rate ":
+                    Digibutter.responses.specify_rate_message(Digibutter, latest_post, id, room_id, content, post_type)
+                elif content[0:9] == "!rh rate ":
+                    Digibutter.responses.rate_message(Digibutter, latest_post, id, room_id, content, post_type)
+                else:
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+            elif content == "!rh discord":
+                Digibutter.responses.discord_message(Digibutter, latest_post, id, room_id, content, post_type)
             elif content[0:8] == "!rh roll":
-                if content == "!rh roll":
+                if content == "!rh roll" or "!rh roll ":
                     Digibutter.responses.default_roll_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content[0:9] == "!rh roll ":
-                    try:
-                        max_value = int(content[9:])
-                        Digibutter.responses.custom_roll_message(Digibutter, latest_post, id, room_id, content, post_type, max_value)
-                    except ValueError:
-                        max_value = content[9:]
-                        Digibutter.responses.roll_NaN_error_message(Digibutter, latest_post, id, room_id, content, post_type, max_value)
-            elif content[0:8] == "!rh echo":
-                if content == "!rh echo":
-                    Digibutter.responses.specify_echo_message(Digibutter, latest_post, id, room_id, content, post_type)
-                elif content[0:] == "!rh echo !rh echo":
-                    Digibutter.responses.wise_guy_echo_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.custom_roll_message(Digibutter, latest_post, id, room_id, content, post_type)
                 else:
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+            elif content == "!rh online":
+                Digibutter.responses.online_message(Digibutter, latest_post, id, room_id, content, post_type)
+            elif content[0:8] == "!rh echo":
+                if content == "!rh echo" or "!rh echo ":
+                    Digibutter.responses.specify_echo_message(Digibutter, latest_post, id, room_id, content, post_type)
+                elif "!rh echo !rh echo" in content:
+                    Digibutter.responses.wise_guy_echo_message(Digibutter, latest_post, id, room_id, content, post_type)
+                elif content[0:9] == "!rh echo ":
                     Digibutter.responses.echo_message(Digibutter, latest_post, id, room_id, content, post_type)
+                else:
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+            elif content[0:8] == "!rh time":
+                if content == "!rh time" or "!rh time ":
+                    Digibutter.responses.UTC_time_message(Digibutter, latest_post, id, room_id, content, post_type)
+                elif content[0:9] == "!rh time ":
+                    Digibutter.responses.custom_time_message(Digibutter, latest_post, id, room_id, content, post_type)
+                else:
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+            elif content[0:13] == "!rh tictactoe":
+                if content == "!rh tictactoe" or "!rh tictactoe ":
+                    Digibutter.responses.specify_tictactoe_message(Digibutter, latest_post, id, room_id, content, post_type)
+                elif content == "!rh tictactoe new":
+                    Digibutter.responses.new_tictactoe_message(Digibutter, latest_post, id, room_id, content, post_type)
+                elif content == "!rh tictactoe display":
+                    Digibutter.responses.display_ticactoe_message(Digibutter, latest_post, id, room_id, content, post_type)
+                elif content == "!rh tictactoe help":
+                    Digibutter.responses.tictactoe_help_message(Digibutter, latest_post, id, room_id, content, post_type)
+                elif content[0:14] == "!rh tictactoe ":
+                    Digibutter.responses.tictactoe_message(Digibutter, latest_post, id, room_id, content, post_type)
+                else:
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+            elif content[0:8] == "!rh flip":
+                if content == "!rh flip":
+                    Digibutter.responses.default_flip_message(Digibutter, latest_post, id, room_id, content, post_type)
+                elif content[0:9] == "!rh flip ":
+                    Digibutter.responses.custom_flip_message(Digibutter, latest_post, id, room_id, content, post_type)
+                else:
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
             else:
                 Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
 
-    # NerrBot: ReHatched's code to respond to specific commands
     class responses:
         """
         NerrBot: ReHatched's code to respond to specific commands
@@ -251,7 +419,7 @@ class Digibutter(BaseNamespace):
             """
             Posts the about message as a reply to the latest message in the current room
             """
-            reply_text = "--NerrBot: ReHatched--\nVersion: 0.1 Alpha\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus.\nNerrBot: ReHatched was created by and is maintained by TheEvilShadoo." % counter.count
+            reply_text = "--NerrBot: ReHatched--\nVersion: 1.0\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus.\nNerrBot: ReHatched was created by and is maintained by TheEvilShadoo." % counter.count
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -307,11 +475,41 @@ class Digibutter(BaseNamespace):
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
+        def help_discord_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts the help message for the discord command as a reply to the latest topic in the current room
+            """
+            reply_text = "discord - Prints a permanent invite link to the Digibutter Unnoficial Discord server (D.U.D) to the chat."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
         def help_roll_message(self, latest_post, id, room_id, content, post_type):
             """
             Posts the help message for the roll command as a reply to the latest topic in the current room
             """
             reply_text = "roll <sides> - Roll a random dice, with an optional number of sides (default is six)."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def help_online_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts the help message for the online command as a reply to the latest topic in the current room
+            """
+            reply_text = "online - Print a list of the current online users."
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -337,11 +535,41 @@ class Digibutter(BaseNamespace):
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def not_implemented_yet_message(self, latest_post, id, room_id, content, post_type):
+        def help_time_message(self, latest_post, id, room_id, content, post_type):
             """
-            Posts the not implemented yet message as a reply to the latest message in the current room
+            Posts the help message for the time command as a reply to the latest topic in the current room
             """
-            reply_text = "I'm sorry, but this command has not been programmed back into my robot brain yet."
+            reply_text = "time <timezone> - Print the current UTC date and time. Optionally specify a timezone."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def help_tictactoe_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts the help message for the tictactoe command as a reply to the latest topic in the current room
+            """
+            reply_text = "tictactoe <new/display/help> - Play a game of Tic Tac Toe."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def help_flip_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts the help message for the flip command as a reply to the latest topic in the current room
+            """
+            reply_text = "flip <coins> - Flip a coin or optionally specify a number of coins to flip (default is one)."
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -371,7 +599,71 @@ class Digibutter(BaseNamespace):
             """
             Posts either "yes" or "no" randomly in response to the the latest message in the current room
             """
-            reply_text = "%s" % yesno.random_odds()
+            choice = random.choice(["Yes", "No"])
+            reply_text = f"{choice}"
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def specify_yesno_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Asks for something to respond with yes or no to when not previously specified
+            """
+            reply_text = "Please specify a question."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def rate_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts a random score out of ten in response to the the latest message in the current room
+            """
+            min_value = 1
+            max_value = 10
+            score = random.randint(min_value, max_value)
+            reply_text = f"{score}/10"
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def specify_rate_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Asks for something to rate when not previously specified
+            """
+            reply_text = "Please specify something to rate."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def discord_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts a permanent invite link to the Digibutter Unnoficial Discord server (D.U.D.) as a reply to the latest message in the current room
+            """
+            reply_text = "Digibutter Unnoficial Discord (D.U.D.) official invite link: https://discord.gg/fRnV3kt"
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -386,7 +678,10 @@ class Digibutter(BaseNamespace):
             """
             Posts the default dice roll message as a reply to the latest message in the current room
             """
-            reply_text = "You rolled a %s!" % dice.default_roll()
+            min_value = 1
+            max_value = 6
+            roll = random.randint(min_value, max_value)
+            reply_text = f"You rolled a {roll}!"
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -397,11 +692,19 @@ class Digibutter(BaseNamespace):
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def custom_roll_message(self, latest_post, id, room_id, content, post_type, max_value):
+        def custom_roll_message(self, latest_post, id, room_id, content, post_type):
             """
             Posts the custom dice roll message as a reply to the latest message in the current room
             """
-            reply_text = "You rolled a %s!" % dice.custom_roll(max_value)
+            min_value = 1
+            try:
+                max_value = int(content[9:])    
+            except ValueError:
+                max_value = content[9:]
+                Digibutter.responses.NaN_error_message(Digibutter, latest_post, id, room_id, content, post_type, max_value)
+                return None
+            roll = random.randint(min_value, max_value)
+            reply_text = f"You rolled a {roll}!"
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -412,11 +715,14 @@ class Digibutter(BaseNamespace):
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def roll_NaN_error_message(Digibutter, latest_post, id, room_id, content, post_type, max_value):
+        def online_message(self, latest_post, id, room_id, content, post_type):
             """
-            Posts a NaN error message as a reply to the latest topic in the current room
+            Posts a list of the current online users
             """
-            reply_text = f'"{max_value}" is not a number.'
+            online_users = ', '.join(Digibutter.online_user_list)
+            logging.info(f"Current online users: {online_users}")
+            print(f"\n> Current online users: {online_users}")
+            reply_text = f"Online users: {online_users}"
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -472,6 +778,257 @@ class Digibutter(BaseNamespace):
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
+        def UTC_time_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts the current date and time in UTC as a reply to the latest message in the current room
+            """
+            reply_text = "The current date and time is: %s" % datetime.datetime.utcnow().strftime("%a %B %w, %Y at %H:%M:%S UTC")
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def custom_time_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts the current date and time for the specified timezone as a reply to the latest message in the current room
+            """
+            timezone = content[10:13]
+            try: 
+                reply_text = "The current date and time is: %s" % datetime.datetime.now(tz=pytz.timezone(f"{timezone}")).strftime(f"%a %B %w, %Y at %#I:%M:%S %p {timezone}")
+            except:
+                reply_text = f"'{timezone}' is not a valid timezone."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def tictactoe_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts an updated version of the tictactoe board as a reply to the latest message in the current room as the game progresses
+            """
+            if Digibutter.tictactoe.tictactoe_game == None:
+                reply_text = "There isn't a tictactoe game taking place currently."
+            else:
+                try:
+                    x_coordinate = int(content[15])
+                    y_coordinate = int(content[17])
+                    move = Digibutter.tictactoe.find_player_move(Digibutter, x_coordinate, y_coordinate)
+                    if move > 0 and move < 10:
+                        if Digibutter.tictactoe.values[move - 1] != ' ':
+                            reply_text = "That space is already occupied, try again."
+                        else:
+                            Digibutter.tictactoe.values[move - 1] = Digibutter.tictactoe.player_symbol
+                            Digibutter.tictactoe.turn += 1
+                            if Digibutter.tictactoe.is_board_full(Digibutter.tictactoe, Digibutter.tictactoe.values) == True:
+                                reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
+                                Tie!"""
+                            elif Digibutter.tictactoe.is_winner(Digibutter.tictactoe, Digibutter.tictactoe.values, Digibutter.tictactoe.player_symbol):
+                                reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
+                                Congratulations, you won!
+                                https://www.youtube.com/watch?v=MoI8Z8Dq1yY"""
+                            else:
+                                if Digibutter.tictactoe.player_symbol == "O":
+                                    move = Digibutter.tictactoe.find_NerrBot_move()
+                                    Digibutter.tictactoe.values[move - 1] = Digibutter.tictactoe.player_symbol
+                                    if Digibutter.tictactoe.is_board_full(Digibutter.tictactoe, Digibutter.tictactoe.values) == True:
+                                        reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
+                                        Tie!"""
+                                    elif Digibutter.tictactoe.is_winner(Digibutter.tictactoe, Digibutter.tictactoe.values, Digibutter.tictactoe.NerrBot_symbol):
+                                        reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
+                                        I win this time!
+                                        https://www.youtube.com/watch?v=uDCMYLQxsAA"""
+                                    else:
+                                        Digibutter.tictactoe.turn += 1
+                                        Digibutter.tictactoe.tictactoe_game = f":{Digibutter.tictactoe.player}: Turn {Digibutter.tictactoe.turn} :NerrBot: Rehatched:" + f"""
+                                        {Digibutter.tictactoe.tictactoe_board}"""
+                                        reply_text = f"{Digibutter.tictactoe.tictactoe_game}"
+                                else:
+                                    Digibutter.tictactoe.player_symbol = "X"
+                                    move = Digibutter.tictactoe.find_NerrBot_move()
+                                    Digibutter.tictactoe.values[move - 1] = Digibutter.tictactoe.player_symbol
+                                    if Digibutter.tictactoe.is_board_full(Digibutter.tictactoe, Digibutter.tictactoe.tictactoe_board) == True:
+                                        reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
+                                        Tie!"""
+                                    elif Digibutter.tictactoe.is_winner(Digibutter.tictactoe, Digibutter.tictactoe.values, Digibutter.tictactoe.NerrBot_symbol):
+                                        reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
+                                        I win this time!
+                                        https://www.youtube.com/watch?v=uDCMYLQxsAA"""
+                                    else:
+                                        Digibutter.tictactoe.turn += 1
+                                        Digibutter.tictactoe.tictactoe_game = f":NerrBot: Rehatched: Turn {Digibutter.tictactoe.turn} :{Digibutter.tictactoe.player}:" + f"""
+                                        {Digibutter.tictactoe.tictactoe_board}"""
+                                        reply_text = f"{Digibutter.tictactoe.tictactoe_game}"
+                    else:
+                        reply_text = "That wasn't a valid move, try again."
+                except ValueError:
+                    reply_text = "That wasn't a valid move, try again."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def new_tictactoe_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts a new tictactoe board as a reply to the latest message in the current room
+            """
+            Digibutter.tictactoe.player = latest_post['user']['name']
+            Digibutter.tictactoe.turn = 1
+            first_player = random.choice(Digibutter.tictactoe.player, "NerrBot: ReHatched")
+            if first_player == Digibutter.tictactoe.player:
+                Digibutter.tictactoe.tictactoe_game = f":{Digibutter.tictactoe.player}: Turn {Digibutter.tictactoe.turn} :NerrBot: Rehatched:" + f"""
+                {Digibutter.tictactoe.tictactoe_board}"""
+                reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
+                A new game has begun! You can go first.
+                Enter '!rh tictactoe <x> <y>' to play."""
+                Digibutter.tictactoe.player_symbol = "O"
+                Digibutter.tictactoe.NerrBot_symbol = "X"
+            else:
+                first_player = "NerrBot: ReHatched"
+                x_coordinate = random.randint(0, 2)
+                y_coordinate = random.randint(0, 2)
+                move = Digibutter.tictactoe.find_player_move(Digibutter, x_coordinate, y_coordinate)
+                Digibutter.tictactoe.values[move - 1] = "O"
+                Digibutter.tictactoe.turn += 1
+                Digibutter.tictactoe.tictactoe_game = f":NerrBot: Rehatched: Turn {Digibutter.tictactoe.turn} :{Digibutter.tictactoe.player}:" + f"""
+                {Digibutter.tictactoe.tictactoe_board}"""
+                reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
+                A new game has begun! I have gone first.
+                Enter '!rh tictactoe <x> <y>' to play."""
+                Digibutter.tictactoe.player_symbol = "X"
+                Digibutter.tictactoe.NerrBot_symbol = "O"
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def display_ticactoe_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts the current tictactoe board as a reply to the latest message in the current room
+            """
+            if Digibutter.tictactoe.tictactoe_game == None:
+                reply_text = "There isn't a tictactoe game taking place currently."
+            else:
+                reply_text = Digibutter.tictactoe.tictactoe_game
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def tictactoe_help_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts the help message for the arguments within the tictactoe command as a reply to the latest message in the current room
+            """
+            reply_text = "Commands for TicTacToe are: new, display, help"
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def specify_tictactoe_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Asks for an argument for the tictactoe command when not previously specified as a reply to the latest message in the current room
+            """
+            reply_text = "Please specify an argument for the tictactoe command."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def default_flip_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts the default coin flip message as a reply to the latest message in the current room
+            """
+            flip = random.choice("heads", "tails")
+            reply_text = f"The coin landed on {flip}."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def custom_flip_message(self, latest_post, id, room_id, content, post_type):
+            """
+            Posts the custom coin flip message as a reply to the latest message in the current room
+            """
+            try:
+                number_of_coin_flips = int(content[9:])    
+            except ValueError:
+                number_of_coin_flips = content[9:]
+                Digibutter.responses.NaN_error_message(Digibutter, latest_post, id, room_id, content, post_type, number_of_coin_flips)
+                return None
+            heads = 0
+            tails = 0
+            for amount in range(number_of_coin_flips):
+                flip = random.choice("heads", "tails")
+                if flip == "heads":
+                    heads += 1
+                elif flip == "tails":
+                    tails += 1
+            reply_text = f"The coin landed heads {heads} times and tails {tails} times."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def NaN_error_message(Digibutter, latest_post, id, room_id, content, post_type, max_value, number_of_coin_flips):
+            """
+            Posts a NaN error message as a reply to the latest topic in the current room
+            """
+            reply_text = f"'{max_value or number_of_coin_flips}' is not a number."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
         def not_recognized_message(self, latest_post, id, room_id, content, post_type):
             """
             Posts the command not recognized message as a reply to the latest message in the current room
@@ -489,4 +1046,5 @@ class Digibutter(BaseNamespace):
 
 sio = SocketIO('http://digibutter.nerr.biz', 80, Digibutter, cookies={'nerr3': "s:uW83D8OONzshQkshsXgwYiZG.GhLY3EKzpIt6tuZtsLcfiWpfu4ze5QsHkZ8gfQtKDHM"})
 sio.on('posts:create', Digibutter.on_new_post)
+sio.on('updateusers', Digibutter.on_userupdate)
 sio.wait()
