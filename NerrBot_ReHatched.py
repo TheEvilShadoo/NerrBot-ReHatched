@@ -51,7 +51,9 @@ class Digibutter(BaseNamespace):
     def on_connect(self):
         logging.info('A connection with the Digibutter websocket has been established.')
         print('\n> A connection with the Digibutter websocket has been established.')
-        Digibutter.authenticate(BaseNamespace)
+        logging.info("Attempting to login...")
+        print("\n> Attempting to login...")
+        sio.emit("ready", Digibutter.on_authentication(BaseNamespace))
         sio.wait(seconds=.2)
         sio.emit("posts:index", {"topic": False, "room": "db", "topicsOnly": False, "source": "db"}, Digibutter.on_all_posts_index_response)
         sio.wait(seconds=.2)
@@ -62,6 +64,7 @@ class Digibutter(BaseNamespace):
         sio.emit("posts:chats", {"room": "sidebar"}, Digibutter.on_NerrChat_chatlog_response)
         counter_thread = threading.Thread(target=counter.counter)
         counter_thread.start()
+        sio.wait(seconds=.2)
         sio.emit("posts:create", {"content":"Ready.","post_type":"","roomId":"sidebar","source":"db"})
 
     def on_authentication(self):
@@ -75,7 +78,9 @@ class Digibutter(BaseNamespace):
     def on_reconnect(self):
         logging.info('Reconnected to the Digibutter websocket.')
         print('\n> Reconnected to the Digibutter websocket.')
-        Digibutter.authenticate(BaseNamespace)
+        logging.info("Attempting to login...")
+        print("\n> Attempting to login...")
+        sio.emit("ready", Digibutter.on_authentication(BaseNamespace))
         sio.wait(seconds=.2)
         sio.emit("posts:index", {"topic": False, "room": "db", "topicsOnly": False, "source": "db"}, Digibutter.on_all_posts_index_response)
         sio.wait(seconds=.2)
@@ -96,10 +101,10 @@ class Digibutter(BaseNamespace):
             room_id = 'db'
             content = index['posts'][0]['content']
             post_type = ''
-            print('\n> Index successfully parsed')
+            print('\n> "All Posts" index successfully parsed')
         except:
-            logging.error('Failed to parse index')
-            print('\n> ERROR: Failed to parse index')
+            logging.error('Failed to parse inde for "All Posts"')
+            print('\n> ERROR: Failed to parse index for "All Posts"')
             index = None
             latest_post = None
             id = None
@@ -118,10 +123,10 @@ class Digibutter(BaseNamespace):
             room_id = 'nf'
             content = index['posts'][0]['content']
             post_type = ''
-            print('\n> Index successfully parsed')
+            print('\n> "Gaming News" index successfully parsed')
         except:
-            logging.error('Failed to parse index')
-            print('\n> ERROR: Failed to parse index')
+            logging.error('Failed to parse index for "Gaming News"')
+            print('\n> ERROR: Failed to parse index for "Gaming News"')
             index = None
             latest_post = None
             id = None
@@ -140,10 +145,10 @@ class Digibutter(BaseNamespace):
             room_id = 'sidebar'
             content = index['posts'][0]['content']
             post_type = ''
-            print('\n> Index successfully parsed')
+            print('\n> "The Dump" index successfully parsed')
         except:
-            logging.error('Failed to parse index')
-            print('\n> ERROR: Failed to parse index')
+            logging.error('Failed to parse index for "The Dump"')
+            print('\n> ERROR: Failed to parse index for "The Dump"')
             index = None
             latest_post = None
             id = None
@@ -153,7 +158,7 @@ class Digibutter(BaseNamespace):
         Digibutter.do_logic(Digibutter, latest_post, id, room_id, content, post_type)
 
     def on_NerrChat_chatlog_response(self):
-        print('\n> Received chatlog for "NerrChat"')
+        print('\n> Received index for "NerrChat"')
         print('\n> Parsing index...')
         try:
             index = json5.loads(str(self))
@@ -162,10 +167,10 @@ class Digibutter(BaseNamespace):
             room_id = 'sidebar'
             content = index['posts'][0]['content']
             post_type = 'chat'
-            print('\n> Index successfully parsed')
+            print('\n> "NerrChat" index successfully parsed')
         except:
-            logging.error('Failed to parse index')
-            print('\n> ERROR: Failed to parse chatlog')
+            logging.error('Failed to parse index for "NerrChat"')
+            print('\n> ERROR: Failed to parse index for "NerrChat"')
             index = None
             latest_post = None
             id = None
@@ -200,14 +205,10 @@ class Digibutter(BaseNamespace):
         Digibutter.do_logic(Digibutter, latest_post, id, room_id, content, post_type)
 
     def on_userupdate(self):
-        online_user_index = json5.loads(str(self))
+        online_user_index = self
+        Digibutter.online_user_list = []
         for user in online_user_index:
             Digibutter.online_user_list.append(user["name"])
-
-    def authenticate(self):
-        logging.info("Attempting to login...")
-        print("\n> Attempting to login...")
-        sio.emit("ready", Digibutter.on_authentication(BaseNamespace))
 
     class tictactoe:
         """
@@ -217,16 +218,8 @@ class Digibutter(BaseNamespace):
         turn = None
         player_symbol = None
         NerrBot_symbol = None
-        values = [' ' for x in range(9)]
-        tictactoe_board = f"""     |     |     
-  {values[0]}  |  {values[1]}  |  {values[2]}  
-_____|_____|_____
-     |     |     
-  {values[3]}  |  {values[4]}  |  {values[5]}  
-_____|_____|_____
-     |     |     
-  {values[6]}  |  {values[7]}  |  {values[8]}  
-     |     |     """
+        values = [f'{" ":<2}' for x in range(9)]
+        tictactoe_board = "            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n            |            |            " % (values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8])
         tictactoe_game = None
 
         def find_player_move(self, x_coordinate, y_coordinate):
@@ -262,7 +255,7 @@ _____|_____|_____
                     return move
 
         def find_NerrBot_move():
-            possible_moves = [x for x, letter in enumerate(Digibutter.tictactoe.values) if letter == " "]
+            possible_moves = [x for x, letter in enumerate(Digibutter.tictactoe.values) if letter == f'{" ":<2}']
             move = 0
 
             for letter in ['O', 'X']:
@@ -295,17 +288,17 @@ _____|_____|_____
             return move
 
         def is_winner(self, values, symbol):
-            return (values[1] == symbol and values[2] == symbol and values[3] == symbol) or (
-            values[4] == symbol and values[5] == symbol and values[6] == symbol) or (
-            values[7] == symbol and values[8] == symbol and values[9] == symbol) or (
-            values[1] == symbol and values[4] == symbol and values[7] == symbol) or (
-            values[2] == symbol and values[5] == symbol and values[8] == symbol) or (
-            values[3] == symbol and values[6] == symbol and values[9] == symbol) or (
-            values[1] == symbol and values[5] == symbol and values[9] == symbol) or (
-            values[3] == symbol and values[5] == symbol and values[7] == symbol)
+            return (values[0] == symbol and values[1] == symbol and values[2] == symbol or 
+values[3] == symbol and values[4] == symbol and values[5] == symbol or 
+values[6] == symbol and values[7] == symbol and values[8] == symbol or 
+values[0] == symbol and values[3] == symbol and values[6] == symbol or 
+values[1] == symbol and values[4] == symbol and values[7] == symbol or 
+values[2] == symbol and values[5] == symbol and values[8] == symbol or 
+values[0] == symbol and values[4] == symbol and values[8] == symbol or 
+values[2] == symbol and values[4] == symbol and values[6] == symbol)
 
         def is_board_full(self, values):
-            if Digibutter.tictactoe.values.count(" ") > 0:
+            if Digibutter.tictactoe.values.count(f'{" ":<2}') > 0:
                 return False
             else:
                 return True
@@ -348,14 +341,14 @@ _____|_____|_____
                 else:
                     Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
             elif content[0:9] == "!rh yesno":
-                if content == "!rh yesno" or "!rh yesno ":
+                if content == "!rh yesno":
                     Digibutter.responses.specify_yesno_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content[0:10] == "!rh yesno ":
                     Digibutter.responses.yesno_message(Digibutter, latest_post, id, room_id, content, post_type)
                 else:
                     Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
             elif content[0:8] == "!rh rate":
-                if content == "!rh rate" or "!rh rate ":
+                if content == "!rh rate":
                     Digibutter.responses.specify_rate_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content[0:9] == "!rh rate ":
                     Digibutter.responses.rate_message(Digibutter, latest_post, id, room_id, content, post_type)
@@ -364,7 +357,7 @@ _____|_____|_____
             elif content == "!rh discord":
                 Digibutter.responses.discord_message(Digibutter, latest_post, id, room_id, content, post_type)
             elif content[0:8] == "!rh roll":
-                if content == "!rh roll" or "!rh roll ":
+                if content == "!rh roll":
                     Digibutter.responses.default_roll_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content[0:9] == "!rh roll ":
                     Digibutter.responses.custom_roll_message(Digibutter, latest_post, id, room_id, content, post_type)
@@ -373,7 +366,7 @@ _____|_____|_____
             elif content == "!rh online":
                 Digibutter.responses.online_message(Digibutter, latest_post, id, room_id, content, post_type)
             elif content[0:8] == "!rh echo":
-                if content == "!rh echo" or "!rh echo ":
+                if content == "!rh echo":
                     Digibutter.responses.specify_echo_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif "!rh echo !rh echo" in content:
                     Digibutter.responses.wise_guy_echo_message(Digibutter, latest_post, id, room_id, content, post_type)
@@ -382,14 +375,14 @@ _____|_____|_____
                 else:
                     Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
             elif content[0:8] == "!rh time":
-                if content == "!rh time" or "!rh time ":
+                if content == "!rh time":
                     Digibutter.responses.UTC_time_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content[0:9] == "!rh time ":
                     Digibutter.responses.custom_time_message(Digibutter, latest_post, id, room_id, content, post_type)
                 else:
                     Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
             elif content[0:13] == "!rh tictactoe":
-                if content == "!rh tictactoe" or "!rh tictactoe ":
+                if content == "!rh tictactoe":
                     Digibutter.responses.specify_tictactoe_message(Digibutter, latest_post, id, room_id, content, post_type)
                 elif content == "!rh tictactoe new":
                     Digibutter.responses.new_tictactoe_message(Digibutter, latest_post, id, room_id, content, post_type)
@@ -434,7 +427,7 @@ _____|_____|_____
             """
             Posts the help message as a reply to the latest message in the current room
             """
-            reply_text = "Available commands are: yesno, rate, roll, online, echo, time, tictactoe, flip\nEnter '!rh help <command>' to learn more."
+            reply_text = "Available commands are: yesno, rate, roll, online, discord, echo, time, tictactoe, flip\nEnter '!rh help <command>' to learn more."
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -599,8 +592,7 @@ _____|_____|_____
             """
             Posts either "yes" or "no" randomly in response to the the latest message in the current room
             """
-            choice = random.choice(["Yes", "No"])
-            reply_text = f"{choice}"
+            reply_text = "%s" % random.choice(["Yes", "No"])
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -782,7 +774,7 @@ _____|_____|_____
             """
             Posts the current date and time in UTC as a reply to the latest message in the current room
             """
-            reply_text = "The current date and time is: %s" % datetime.datetime.utcnow().strftime("%a %B %w, %Y at %H:%M:%S UTC")
+            reply_text = "The current date and time is: %s" % datetime.datetime.utcnow().strftime("%a %B %#d, %Y at %H:%M:%S UTC")
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -797,9 +789,9 @@ _____|_____|_____
             """
             Posts the current date and time for the specified timezone as a reply to the latest message in the current room
             """
-            timezone = content[10:13]
+            timezone = content[9:12]
             try: 
-                reply_text = "The current date and time is: %s" % datetime.datetime.now(tz=pytz.timezone(f"{timezone}")).strftime(f"%a %B %w, %Y at %#I:%M:%S %p {timezone}")
+                reply_text = "The current date and time is: %s" % datetime.datetime.now(tz=pytz.timezone(f"{timezone}")).strftime(f"%a %B %#d, %Y at %#I:%M:%S %p {timezone}")
             except:
                 reply_text = f"'{timezone}' is not a valid timezone."
             if '"reply_to":{"replies":' in latest_post:
@@ -820,57 +812,74 @@ _____|_____|_____
                 reply_text = "There isn't a tictactoe game taking place currently."
             else:
                 try:
-                    x_coordinate = int(content[15])
-                    y_coordinate = int(content[17])
+                    x_coordinate = int(content[14])
+                    y_coordinate = int(content[16])
                     move = Digibutter.tictactoe.find_player_move(Digibutter, x_coordinate, y_coordinate)
                     if move > 0 and move < 10:
-                        if Digibutter.tictactoe.values[move - 1] != ' ':
+                        if Digibutter.tictactoe.values[move - 1] != f'{" ":<2}':
                             reply_text = "That space is already occupied, try again."
                         else:
                             Digibutter.tictactoe.values[move - 1] = Digibutter.tictactoe.player_symbol
+                            Digibutter.tictactoe.tictactoe_board = "            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n            |            |            " % (Digibutter.tictactoe.values[0], Digibutter.tictactoe.values[1], Digibutter.tictactoe.values[2], Digibutter.tictactoe.values[3], Digibutter.tictactoe.values[4], Digibutter.tictactoe.values[5], Digibutter.tictactoe.values[6], Digibutter.tictactoe.values[7], Digibutter.tictactoe.values[8])
+                            if Digibutter.tictactoe.player_symbol == "O":
+                                Digibutter.tictactoe.tictactoe_game = ":%s: Turn %s :NerrBot: Rehatched:\n%s" % (Digibutter.tictactoe.player, Digibutter.tictactoe.turn, Digibutter.tictactoe.tictactoe_board)
+                            else:
+                                Digibutter.tictactoe.player_symbol = "X"
+                                Digibutter.tictactoe.tictactoe_game = ":NerrBot: Rehatched: Turn %s :%s:\n%s" % (Digibutter.tictactoe.turn, Digibutter.tictactoe.player, Digibutter.tictactoe.tictactoe_board)
                             Digibutter.tictactoe.turn += 1
                             if Digibutter.tictactoe.is_board_full(Digibutter.tictactoe, Digibutter.tictactoe.values) == True:
-                                reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
-                                Tie!"""
+                                reply_text = "%s\nTie!" % Digibutter.tictactoe.tictactoe_game
+                                Digibutter.tictactoe.values = None
+                                Digibutter.tictactoe.tictactoe_board = None
+                                Digibutter.tictactoe.tictactoe_game = None
                             elif Digibutter.tictactoe.is_winner(Digibutter.tictactoe, Digibutter.tictactoe.values, Digibutter.tictactoe.player_symbol):
-                                reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
-                                Congratulations, you won!
-                                https://www.youtube.com/watch?v=MoI8Z8Dq1yY"""
+                                reply_text = "%s\nCongratulations, you won!\nhttps://www.youtube.com/watch?v=MoI8Z8Dq1yY" % Digibutter.tictactoe.tictactoe_game
+                                Digibutter.tictactoe.values = None
+                                Digibutter.tictactoe.tictactoe_board = None
+                                Digibutter.tictactoe.tictactoe_game = None
                             else:
                                 if Digibutter.tictactoe.player_symbol == "O":
                                     move = Digibutter.tictactoe.find_NerrBot_move()
-                                    Digibutter.tictactoe.values[move - 1] = Digibutter.tictactoe.player_symbol
+                                    Digibutter.tictactoe.values[move] = "X"
+                                    Digibutter.tictactoe.tictactoe_board = "            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n            |            |            " % (Digibutter.tictactoe.values[0], Digibutter.tictactoe.values[1], Digibutter.tictactoe.values[2], Digibutter.tictactoe.values[3], Digibutter.tictactoe.values[4], Digibutter.tictactoe.values[5], Digibutter.tictactoe.values[6], Digibutter.tictactoe.values[7], Digibutter.tictactoe.values[8])
+                                    Digibutter.tictactoe.tictactoe_game = ":%s: Turn %s :NerrBot: Rehatched:\n%s" % (Digibutter.tictactoe.player, Digibutter.tictactoe.turn, Digibutter.tictactoe.tictactoe_board)
                                     if Digibutter.tictactoe.is_board_full(Digibutter.tictactoe, Digibutter.tictactoe.values) == True:
-                                        reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
-                                        Tie!"""
+                                        reply_text = "%s\nTie!" % Digibutter.tictactoe.tictactoe_game
+                                        Digibutter.tictactoe.values = None
+                                        Digibutter.tictactoe.tictactoe_board = None
+                                        Digibutter.tictactoe.tictactoe_game = None
                                     elif Digibutter.tictactoe.is_winner(Digibutter.tictactoe, Digibutter.tictactoe.values, Digibutter.tictactoe.NerrBot_symbol):
-                                        reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
-                                        I win this time!
-                                        https://www.youtube.com/watch?v=uDCMYLQxsAA"""
+                                        reply_text = "%s\nI win this time!\nhttps://www.youtube.com/watch?v=uDCMYLQxsAA" % Digibutter.tictactoe.tictactoe_game
+                                        Digibutter.tictactoe.values = None
+                                        Digibutter.tictactoe.tictactoe_board = None
+                                        Digibutter.tictactoe.tictactoe_game = None
                                     else:
                                         Digibutter.tictactoe.turn += 1
-                                        Digibutter.tictactoe.tictactoe_game = f":{Digibutter.tictactoe.player}: Turn {Digibutter.tictactoe.turn} :NerrBot: Rehatched:" + f"""
-                                        {Digibutter.tictactoe.tictactoe_board}"""
-                                        reply_text = f"{Digibutter.tictactoe.tictactoe_game}"
+                                        Digibutter.tictactoe.tictactoe_game = ":%s: Turn %s :NerrBot: Rehatched:\n%s" % (Digibutter.tictactoe.player, Digibutter.tictactoe.turn, Digibutter.tictactoe.tictactoe_board)
+                                        reply_text = "%s" % Digibutter.tictactoe.tictactoe_game
                                 else:
                                     Digibutter.tictactoe.player_symbol = "X"
                                     move = Digibutter.tictactoe.find_NerrBot_move()
-                                    Digibutter.tictactoe.values[move - 1] = Digibutter.tictactoe.player_symbol
+                                    Digibutter.tictactoe.values[move] = "O"
+                                    Digibutter.tictactoe.tictactoe_board = "            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n            |            |            " % (Digibutter.tictactoe.values[0], Digibutter.tictactoe.values[1], Digibutter.tictactoe.values[2], Digibutter.tictactoe.values[3], Digibutter.tictactoe.values[4], Digibutter.tictactoe.values[5], Digibutter.tictactoe.values[6], Digibutter.tictactoe.values[7], Digibutter.tictactoe.values[8])
+                                    Digibutter.tictactoe.tictactoe_game = ":NerrBot: Rehatched: Turn %s :%s:\n%s" % (Digibutter.tictactoe.turn, Digibutter.tictactoe.player, Digibutter.tictactoe.tictactoe_board)
                                     if Digibutter.tictactoe.is_board_full(Digibutter.tictactoe, Digibutter.tictactoe.tictactoe_board) == True:
-                                        reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
-                                        Tie!"""
+                                        reply_text = "%s\nTie!" % Digibutter.tictactoe.tictactoe_game
+                                        Digibutter.tictactoe.values = None
+                                        Digibutter.tictactoe.tictactoe_board = None
+                                        Digibutter.tictactoe.tictactoe_game = None
                                     elif Digibutter.tictactoe.is_winner(Digibutter.tictactoe, Digibutter.tictactoe.values, Digibutter.tictactoe.NerrBot_symbol):
-                                        reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
-                                        I win this time!
-                                        https://www.youtube.com/watch?v=uDCMYLQxsAA"""
+                                        reply_text = "%s\nI win this time!\nhttps://www.youtube.com/watch?v=uDCMYLQxsAA" % Digibutter.tictactoe.tictactoe_game
+                                        Digibutter.tictactoe.values = None
+                                        Digibutter.tictactoe.tictactoe_board = None
+                                        Digibutter.tictactoe.tictactoe_game = None
                                     else:
                                         Digibutter.tictactoe.turn += 1
-                                        Digibutter.tictactoe.tictactoe_game = f":NerrBot: Rehatched: Turn {Digibutter.tictactoe.turn} :{Digibutter.tictactoe.player}:" + f"""
-                                        {Digibutter.tictactoe.tictactoe_board}"""
-                                        reply_text = f"{Digibutter.tictactoe.tictactoe_game}"
+                                        Digibutter.tictactoe.tictactoe_game = ":NerrBot: Rehatched: Turn %s :%s:\n%s" % (Digibutter.tictactoe.turn, Digibutter.tictactoe.player, Digibutter.tictactoe.tictactoe_board)
+                                        reply_text = "%s" % Digibutter.tictactoe.tictactoe_game
                     else:
                         reply_text = "That wasn't a valid move, try again."
-                except ValueError:
+                except:
                     reply_text = "That wasn't a valid move, try again."
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
@@ -886,15 +895,14 @@ _____|_____|_____
             """
             Posts a new tictactoe board as a reply to the latest message in the current room
             """
+            Digibutter.tictactoe.values = [f'{" ":<2}' for x in range(9)]
+            Digibutter.tictactoe.tictactoe_board = "            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n            |            |            " % (Digibutter.tictactoe.values[0], Digibutter.tictactoe.values[1], Digibutter.tictactoe.values[2], Digibutter.tictactoe.values[3], Digibutter.tictactoe.values[4], Digibutter.tictactoe.values[5], Digibutter.tictactoe.values[6], Digibutter.tictactoe.values[7], Digibutter.tictactoe.values[8])
             Digibutter.tictactoe.player = latest_post['user']['name']
             Digibutter.tictactoe.turn = 1
-            first_player = random.choice(Digibutter.tictactoe.player, "NerrBot: ReHatched")
+            first_player = random.choice([Digibutter.tictactoe.player, "NerrBot: ReHatched"])
             if first_player == Digibutter.tictactoe.player:
-                Digibutter.tictactoe.tictactoe_game = f":{Digibutter.tictactoe.player}: Turn {Digibutter.tictactoe.turn} :NerrBot: Rehatched:" + f"""
-                {Digibutter.tictactoe.tictactoe_board}"""
-                reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
-                A new game has begun! You can go first.
-                Enter '!rh tictactoe <x> <y>' to play."""
+                Digibutter.tictactoe.tictactoe_game = ":%s: Turn %s :NerrBot: Rehatched:\n%s" % (Digibutter.tictactoe.player, Digibutter.tictactoe.turn, Digibutter.tictactoe.tictactoe_board)
+                reply_text = "%s\nA new game has begun! You can go first.\nEnter '!rh tictactoe <x> <y>' to play." % Digibutter.tictactoe.tictactoe_game
                 Digibutter.tictactoe.player_symbol = "O"
                 Digibutter.tictactoe.NerrBot_symbol = "X"
             else:
@@ -903,12 +911,10 @@ _____|_____|_____
                 y_coordinate = random.randint(0, 2)
                 move = Digibutter.tictactoe.find_player_move(Digibutter, x_coordinate, y_coordinate)
                 Digibutter.tictactoe.values[move - 1] = "O"
+                Digibutter.tictactoe.tictactoe_board = "            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n            |            |            " % (Digibutter.tictactoe.values[0], Digibutter.tictactoe.values[1], Digibutter.tictactoe.values[2], Digibutter.tictactoe.values[3], Digibutter.tictactoe.values[4], Digibutter.tictactoe.values[5], Digibutter.tictactoe.values[6], Digibutter.tictactoe.values[7], Digibutter.tictactoe.values[8])
                 Digibutter.tictactoe.turn += 1
-                Digibutter.tictactoe.tictactoe_game = f":NerrBot: Rehatched: Turn {Digibutter.tictactoe.turn} :{Digibutter.tictactoe.player}:" + f"""
-                {Digibutter.tictactoe.tictactoe_board}"""
-                reply_text = f"""{Digibutter.tictactoe.tictactoe_game}
-                A new game has begun! I have gone first.
-                Enter '!rh tictactoe <x> <y>' to play."""
+                Digibutter.tictactoe.tictactoe_game = ":NerrBot: Rehatched: Turn %s :%s:\n%s" % (Digibutter.tictactoe.turn, Digibutter.tictactoe.player, Digibutter.tictactoe.tictactoe_board)
+                reply_text = "%s\nA new game has begun! I have gone first.\nEnter '!rh tictactoe <x> <y>' to play." % Digibutter.tictactoe.tictactoe_game
                 Digibutter.tictactoe.player_symbol = "X"
                 Digibutter.tictactoe.NerrBot_symbol = "O"
             if '"reply_to":{"replies":' in latest_post:
@@ -973,8 +979,7 @@ _____|_____|_____
             """
             Posts the default coin flip message as a reply to the latest message in the current room
             """
-            flip = random.choice("heads", "tails")
-            reply_text = f"The coin landed on {flip}."
+            reply_text = "The coin landed on %s." % random.choice(["heads", "tails"])
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -998,7 +1003,7 @@ _____|_____|_____
             heads = 0
             tails = 0
             for amount in range(number_of_coin_flips):
-                flip = random.choice("heads", "tails")
+                flip = random.choice(["heads", "tails"])
                 if flip == "heads":
                     heads += 1
                 elif flip == "tails":
