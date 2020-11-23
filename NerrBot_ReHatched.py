@@ -193,7 +193,7 @@ class Digibutter(BaseNamespace):
             content = latest_post['content']
             post_type = latest_post['post_type']
             logging.info('Received a new post: ' + content)
-            print('    ' + content)
+            print(content)
         except:
             logging.error('Failed to parse post content')
             print('\n> ERROR: Failed to parse post content')
