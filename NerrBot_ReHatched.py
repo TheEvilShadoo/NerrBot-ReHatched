@@ -89,7 +89,7 @@ class Digibutter(BaseNamespace):
         sio.emit("posts:index", {"topic": False, "room": "sidebar", "topicsOnly": False, "source": "db"}, Digibutter.on_the_dump_index_response)
         sio.wait(seconds=.2)
         sio.emit("posts:chats", {"room": "sidebar"}, Digibutter.on_NerrChat_chatlog_response)
-        sio.emit("posts:create", {"content":"I disconnected unexpectedly there, sorry!","post_type":"","roomId":"sidebar","source":"db"})
+        # DISABLED - sio.emit("posts:create", {"content":"I disconnected unexpectedly there, sorry!","post_type":"","roomId":"sidebar","source":"db"})
 
     def on_all_posts_index_response(self):
         print('\n> Received posts index for room "All Posts"')
