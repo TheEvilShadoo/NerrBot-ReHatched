@@ -1,9 +1,9 @@
 import colorama
 colorama.init()
 
-version = 1.1
+version = "1.1.1"
 
-print(colorama.Fore.GREEN + f"====================================================NerrBot: RH v{version}====================================================" + colorama.Fore.LIGHTBLUE_EX + """
+print(colorama.Fore.GREEN + f"===================================================NerrBot: RH v{version}===================================================" + colorama.Fore.LIGHTBLUE_EX + """
 
 
                                     _______________________________________________ 
@@ -604,16 +604,20 @@ or "Is Nerr 4.0 ever going to come?" or "Is Nerr 4.0 ever going to come out?" or
 or "Is The Bitlands going to be the best MMO platformer the world has ever seen?" or "Are you more than you seem?" or "Are you more than you appear to be?" or "Do you have a secret function?" or "Do you have any secret functions?"
 or "Is the world in danger?" or "Is someting big going to happen in the world soon?" or "Do you know things that you shouldn't?" or "Do you smoke weed every day?" or "Are you sane?"
 ):
-                    reply_text = "Yes"
+                    response = "Yes"
+                    reply_text = "%s" % response
                 elif content[10:] == ("Is Sticker Star good?" or "Is Sticker Star a good game?" or "Is Paper Mario: Sticker Star good?" or "Is Paper Mario: Sticker Star a good game?" or "Are you a terminator?"
 or "Are you a Terminator?" or "Are you a T-1000?" or "Are you a T-800?" or "Are you dumb?" or "Are you Stupid?" or "Are you alive?" or "Are you sentient?" or "Are you evil?" or "Are you planning something?"
 or "Are you scheming against Digibutter?" or "Are you crazy?" or "Are you insane?" or "Are you drunk?" or "Are you high?" or "Are you intoxicated?"
 ):
-                    reply_text = "No"
+                    response = "No"
+                    reply_text = "%s" % response
                 elif content[10:] == "Do you know everything?":
-                    reply_text = '''"/I don't know everything. I only know what I know/"'''
+                    response = '''"/I don't know everything. I only know what I know/"'''
+                    reply_text = "%s" % response
                 else:
-                    reply_text = "%s" % random.choice(["Yes", "No"])
+                    response = "%s" % random.choice(["Yes", "No"])
+                    reply_text = "%s" % response
             else:
                 reply_text = "Please try again after formatting your question so that it has a question mark at the end."
             if '"reply_to":{"replies":' in latest_post:
@@ -659,7 +663,7 @@ or "Digibutter 4.0" or "Nerr 4.0" or "The Bitlands" or "New Super Bitlands"
                 score = 1
             else:
                 score = random.randint(min_value, max_value)
-            reply_text = f"{score}/10"
+            reply_text = "%s/10" % score
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -745,6 +749,9 @@ or "Digibutter 4.0" or "Nerr 4.0" or "The Bitlands" or "New Super Bitlands"
             """
             Posts a list of the current online users
             """
+            if "NerrBot: ReHatched" not in Digibutter.online_user_list[-1]:
+                Digibutter.online_user_list.pop("NerrBot: ReHatched")
+                Digibutter.online_user_list.insert(-1, "NerrBot: ReHatched")
             online_users = ', '.join(Digibutter.online_user_list)
             logging.info(f"Current online users: {online_users}")
             print(f"\n> Current online users: {online_users}")
@@ -1037,25 +1044,24 @@ or "Digibutter 4.0" or "Nerr 4.0" or "The Bitlands" or "New Super Bitlands"
             if number_of_coin_flips > 1000000:
                 Digibutter.responses.number_too_large_message(Digibutter, latest_post, id, room_id, content, post_type, number_of_coin_flips)
                 return None
+            heads = 0
+            tails = 0
+            for amount in range(number_of_coin_flips):
+                flip = random.choice(["heads", "tails"])
+                if flip == "heads":
+                    heads += 1
+                elif flip == "tails":
+                    tails += 1
+            reply_text = f"The coin landed heads {heads} times and tails {tails} times."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
             else:
-                heads = 0
-                tails = 0
-                for amount in range(number_of_coin_flips):
-                    flip = random.choice(["heads", "tails"])
-                    if flip == "heads":
-                        heads += 1
-                    elif flip == "tails":
-                        tails += 1
-                reply_text = f"The coin landed heads {heads} times and tails {tails} times."
-                if '"reply_to":{"replies":' in latest_post:
-                    type = "reply"
-                else:
-                    type = "post"
-                logging.info('Replying to %s with content: "%s"' % (type, content))
-                print('\n> Replying to %s with content: "%s"' % (type, content))
-                sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-                logging.info("Message was sent successfully")
-                print("\n> Message was sent successfully")
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
 
         def number_too_large_message(self, latest_post, id, room_id, content, post_type, number_of_coin_flips):
             reply_text = f"{number_of_coin_flips} is too large of a number. Please use only numbers up to 1000000 for coin flips."
