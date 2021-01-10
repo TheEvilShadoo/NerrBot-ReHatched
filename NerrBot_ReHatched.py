@@ -750,7 +750,7 @@ or "Digibutter 4.0" or "Nerr 4.0" or "The Bitlands" or "New Super Bitlands"
             Posts a list of the current online users
             """
             if "NerrBot: ReHatched" not in Digibutter.online_user_list[-1]:
-                Digibutter.online_user_list.pop("NerrBot: ReHatched")
+                Digibutter.online_user_list.remove("NerrBot: ReHatched")
                 Digibutter.online_user_list.insert(-1, "NerrBot: ReHatched")
             online_users = ', '.join(Digibutter.online_user_list)
             logging.info(f"Current online users: {online_users}")
