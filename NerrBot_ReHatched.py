@@ -1,7 +1,9 @@
 import colorama
 colorama.init()
 
-print(colorama.Fore.GREEN + "====================================================NerrBot: RH v1.0====================================================" + colorama.Fore.LIGHTBLUE_EX + """
+version = 1.1
+
+print(colorama.Fore.GREEN + f"====================================================NerrBot: RH v{version}====================================================" + colorama.Fore.LIGHTBLUE_EX + """
 
 
                                     _______________________________________________ 
@@ -65,7 +67,7 @@ class Digibutter(BaseNamespace):
         counter_thread = threading.Thread(target=counter.counter)
         counter_thread.start()
         sio.wait(seconds=.2)
-        sio.emit("posts:create", {"content":"Ready.","post_type":"","roomId":"sidebar","source":"db"})
+        sio.emit("posts:create", {"content":f"color=red: NerrBot System v{version} Online","post_type":"","roomId":"sidebar","source":"db"})
 
     def on_authentication(self):
         logging.info("Successfully logged in")
@@ -412,7 +414,7 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
             """
             Posts the about message as a reply to the latest message in the current room
             """
-            reply_text = "--NerrBot: ReHatched--\nVersion: 1.0\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus.\nNerrBot: ReHatched was created by and is maintained by TheEvilShadoo." % counter.count
+            reply_text = f"--NerrBot: ReHatched--\nVersion: {version}\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus.\nNerrBot: ReHatched was created by and is maintained by TheEvilShadoo." % counter.count
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -442,7 +444,7 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
             """
             Posts the help message for the yesno command as a reply to the latest topic in the current room
             """
-            reply_text = "yesno <question> - Ask NerrBot: ReHatched a question and he will respond with either yes or no."
+            reply_text = "yesno <question> - Ask NerrBot: ReHatched a question and he will respond with either yes or no. Some specific questions have predetermined answers."
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -590,9 +592,30 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
 
         def yesno_message(self, latest_post, id, room_id, content, post_type):
             """
-            Posts either "yes" or "no" randomly in response to the the latest message in the current room
+            Posts either "yes" or "no" randomly in response to the the latest message in the current room. Some specific questions have predetermined answers.
             """
-            reply_text = "%s" % random.choice(["Yes", "No"])
+            if content[-1] == "?":
+                if content[10:] == ("Is SPM Good?" or "Is SPM a good game?" or "Is Super Paper Mario good?" or "Is Super Paper Mario a good game?" or "Is Super Paper Mario the best Paper Mario game?" or "Is Paper Mario good?"
+or "Is Paper Mario a good game?" or "Is Paper Mario: The Thousand Year Door good?" or "Is TTYD good?" or "Is TTYD a good game?" or "Is Paper Mario: The Thousand Year Door a good game?"
+or "Is Mr. L a good YouTuber?" or "Is TheEvilShadoo the best user?" or "Is TheEvilShadoo the best user on Digibutter?" or "Is Shadoo the best user?" or "Is Shadoo the best user on Digibutter?" or "Is Shadoo your creator?"
+or "Did Shadoo create you?" or "Is TheEvilShadoo your creator?" or "Did TheEvilShadoo create you?" or "Is Shadoo the current president of Digibutter?" or "Is TheEvilShadoo the current president of Digibutter?"
+or "Is Shadoo the current president of Digibutter.nerr?" or "Is TheEvilShadoo the current president of Digibutter.nerr?" or "Is Digibutter 4.0 ever going to come?" or "Is Digibutter 4.0 ever going to come out?"
+or "Is Nerr 4.0 ever going to come?" or "Is Nerr 4.0 ever going to come out?" or "Is The Bitlands going to be good?" or "Is The Bitlands going to be great?" "Is The Bitlands going to be awesome?"
+or "Is The Bitlands going to be the best MMO platformer the world has ever seen?" or "Are you more than you seem?" or "Are you more than you appear to be?" or "Do you have a secret function?" or "Do you have any secret functions?"
+or "Is the world in danger?" or "Is someting big going to happen in the world soon?" or "Do you know things that you shouldn't?" or "Do you smoke weed every day?" or "Are you sane?"
+):
+                    reply_text = "Yes"
+                elif content[10:] == ("Is Sticker Star good?" or "Is Sticker Star a good game?" or "Is Paper Mario: Sticker Star good?" or "Is Paper Mario: Sticker Star a good game?" or "Are you a terminator?"
+or "Are you a Terminator?" or "Are you a T-1000?" or "Are you a T-800?" or "Are you dumb?" or "Are you Stupid?" or "Are you alive?" or "Are you sentient?" or "Are you evil?" or "Are you planning something?"
+or "Are you scheming against Digibutter?" or "Are you crazy?" or "Are you insane?" or "Are you drunk?" or "Are you high?" or "Are you intoxicated?"
+):
+                    reply_text = "No"
+                elif content[10:] == "Do you know everything?":
+                    reply_text = '''"/I don't know everything. I only know what I know/"'''
+                else:
+                    reply_text = "%s" % random.choice(["Yes", "No"])
+            else:
+                reply_text = "Please try again after formatting your question so that it has a question mark at the end."
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
@@ -624,7 +647,18 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
             """
             min_value = 1
             max_value = 10
-            score = random.randint(min_value, max_value)
+            if content[9:] == ("SPM" or "Super Paper Mario" or "TTYD" or "Paper Mario: The Thousand Year Door" or "Paper Mario" or "TheEvilShadoo" or "Shadoo" or "NerrBot: ReHatched" or "NerrBot" or "Francis" or "Digibutter 1.0"
+or "Digibutter 4.0" or "Nerr 4.0" or "The Bitlands" or "New Super Bitlands"
+):
+                score = 10
+            elif content[9:] == ("Digibutter 3.0" or "The current state of Digbutter" or "Current Digibutter"
+):
+                score = 3
+            elif content[9:] == ("Sticker Star" or "Paper Mario: Sticker Star" or "Mr. L" or "Mr. L Productions" or "Count Bleck" or "CB" "Doo_liss" or "Spammers" or "Twitter" or "Reddit" or "Facebook" or "YouTube"
+):
+                score = 1
+            else:
+                score = random.randint(min_value, max_value)
             reply_text = f"{score}/10"
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
@@ -827,13 +861,13 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                                 Digibutter.tictactoe.player_symbol = "X"
                                 Digibutter.tictactoe.tictactoe_game = ":NerrBot: Rehatched: Turn %s :%s:\n%s" % (Digibutter.tictactoe.turn, Digibutter.tictactoe.player, Digibutter.tictactoe.tictactoe_board)
                             Digibutter.tictactoe.turn += 1
-                            if Digibutter.tictactoe.is_board_full(Digibutter.tictactoe, Digibutter.tictactoe.values) == True:
-                                reply_text = "%s\nTie!" % Digibutter.tictactoe.tictactoe_game
+                            if Digibutter.tictactoe.is_winner(Digibutter.tictactoe, Digibutter.tictactoe.values, Digibutter.tictactoe.player_symbol):
+                                reply_text = "%s\nscroll=left: **Congratulations, you won!**\nhttps://www.youtube.com/watch?v=MoI8Z8Dq1yY" % Digibutter.tictactoe.tictactoe_game
                                 Digibutter.tictactoe.values = None
                                 Digibutter.tictactoe.tictactoe_board = None
                                 Digibutter.tictactoe.tictactoe_game = None
-                            elif Digibutter.tictactoe.is_winner(Digibutter.tictactoe, Digibutter.tictactoe.values, Digibutter.tictactoe.player_symbol):
-                                reply_text = "%s\nCongratulations, you won!\nhttps://www.youtube.com/watch?v=MoI8Z8Dq1yY" % Digibutter.tictactoe.tictactoe_game
+                            elif Digibutter.tictactoe.is_board_full(Digibutter.tictactoe, Digibutter.tictactoe.values) == True:
+                                reply_text = "%s\nscroll=left: **Tie!**" % Digibutter.tictactoe.tictactoe_game
                                 Digibutter.tictactoe.values = None
                                 Digibutter.tictactoe.tictactoe_board = None
                                 Digibutter.tictactoe.tictactoe_game = None
@@ -843,13 +877,13 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                                     Digibutter.tictactoe.values[move] = "X"
                                     Digibutter.tictactoe.tictactoe_board = "            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n            |            |            " % (Digibutter.tictactoe.values[0], Digibutter.tictactoe.values[1], Digibutter.tictactoe.values[2], Digibutter.tictactoe.values[3], Digibutter.tictactoe.values[4], Digibutter.tictactoe.values[5], Digibutter.tictactoe.values[6], Digibutter.tictactoe.values[7], Digibutter.tictactoe.values[8])
                                     Digibutter.tictactoe.tictactoe_game = ":%s: Turn %s :NerrBot: Rehatched:\n%s" % (Digibutter.tictactoe.player, Digibutter.tictactoe.turn, Digibutter.tictactoe.tictactoe_board)
-                                    if Digibutter.tictactoe.is_board_full(Digibutter.tictactoe, Digibutter.tictactoe.values) == True:
-                                        reply_text = "%s\nTie!" % Digibutter.tictactoe.tictactoe_game
+                                    if Digibutter.tictactoe.is_winner(Digibutter.tictactoe, Digibutter.tictactoe.values, Digibutter.tictactoe.NerrBot_symbol):
+                                        reply_text = "%s\nscroll=left: **I win this time!**\nhttps://www.youtube.com/watch?v=uDCMYLQxsAA" % Digibutter.tictactoe.tictactoe_game
                                         Digibutter.tictactoe.values = None
                                         Digibutter.tictactoe.tictactoe_board = None
                                         Digibutter.tictactoe.tictactoe_game = None
-                                    elif Digibutter.tictactoe.is_winner(Digibutter.tictactoe, Digibutter.tictactoe.values, Digibutter.tictactoe.NerrBot_symbol):
-                                        reply_text = "%s\nI win this time!\nhttps://www.youtube.com/watch?v=uDCMYLQxsAA" % Digibutter.tictactoe.tictactoe_game
+                                    elif Digibutter.tictactoe.is_board_full(Digibutter.tictactoe, Digibutter.tictactoe.values) == True:
+                                        reply_text = "%s\nscroll=left: **Tie!**" % Digibutter.tictactoe.tictactoe_game
                                         Digibutter.tictactoe.values = None
                                         Digibutter.tictactoe.tictactoe_board = None
                                         Digibutter.tictactoe.tictactoe_game = None
@@ -863,13 +897,13 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                                     Digibutter.tictactoe.values[move] = "O"
                                     Digibutter.tictactoe.tictactoe_board = "            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n            |            |            " % (Digibutter.tictactoe.values[0], Digibutter.tictactoe.values[1], Digibutter.tictactoe.values[2], Digibutter.tictactoe.values[3], Digibutter.tictactoe.values[4], Digibutter.tictactoe.values[5], Digibutter.tictactoe.values[6], Digibutter.tictactoe.values[7], Digibutter.tictactoe.values[8])
                                     Digibutter.tictactoe.tictactoe_game = ":NerrBot: Rehatched: Turn %s :%s:\n%s" % (Digibutter.tictactoe.turn, Digibutter.tictactoe.player, Digibutter.tictactoe.tictactoe_board)
-                                    if Digibutter.tictactoe.is_board_full(Digibutter.tictactoe, Digibutter.tictactoe.tictactoe_board) == True:
-                                        reply_text = "%s\nTie!" % Digibutter.tictactoe.tictactoe_game
+                                    if Digibutter.tictactoe.is_winner(Digibutter.tictactoe, Digibutter.tictactoe.values, Digibutter.tictactoe.NerrBot_symbol):
+                                        reply_text = "%s\nscroll=left: **I win this time!**\nhttps://www.youtube.com/watch?v=uDCMYLQxsAA" % Digibutter.tictactoe.tictactoe_game
                                         Digibutter.tictactoe.values = None
                                         Digibutter.tictactoe.tictactoe_board = None
                                         Digibutter.tictactoe.tictactoe_game = None
-                                    elif Digibutter.tictactoe.is_winner(Digibutter.tictactoe, Digibutter.tictactoe.values, Digibutter.tictactoe.NerrBot_symbol):
-                                        reply_text = "%s\nI win this time!\nhttps://www.youtube.com/watch?v=uDCMYLQxsAA" % Digibutter.tictactoe.tictactoe_game
+                                    elif Digibutter.tictactoe.is_board_full(Digibutter.tictactoe, Digibutter.tictactoe.tictactoe_board) == True:
+                                        reply_text = "%s\nscroll=left: **Tie!**" % Digibutter.tictactoe.tictactoe_game
                                         Digibutter.tictactoe.values = None
                                         Digibutter.tictactoe.tictactoe_board = None
                                         Digibutter.tictactoe.tictactoe_game = None
@@ -1000,15 +1034,31 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                 number_of_coin_flips = content[9:]
                 Digibutter.responses.NaN_error_message(Digibutter, latest_post, id, room_id, content, post_type, number_of_coin_flips)
                 return None
-            heads = 0
-            tails = 0
-            for amount in range(number_of_coin_flips):
-                flip = random.choice(["heads", "tails"])
-                if flip == "heads":
-                    heads += 1
-                elif flip == "tails":
-                    tails += 1
-            reply_text = f"The coin landed heads {heads} times and tails {tails} times."
+            if number_of_coin_flips > 1000000:
+                Digibutter.responses.number_too_large_message(Digibutter, latest_post, id, room_id, content, post_type, number_of_coin_flips)
+                return None
+            else:
+                heads = 0
+                tails = 0
+                for amount in range(number_of_coin_flips):
+                    flip = random.choice(["heads", "tails"])
+                    if flip == "heads":
+                        heads += 1
+                    elif flip == "tails":
+                        tails += 1
+                reply_text = f"The coin landed heads {heads} times and tails {tails} times."
+                if '"reply_to":{"replies":' in latest_post:
+                    type = "reply"
+                else:
+                    type = "post"
+                logging.info('Replying to %s with content: "%s"' % (type, content))
+                print('\n> Replying to %s with content: "%s"' % (type, content))
+                sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+                logging.info("Message was sent successfully")
+                print("\n> Message was sent successfully")
+
+        def number_too_large_message(self, latest_post, id, room_id, content, post_type, number_of_coin_flips):
+            reply_text = f"{number_of_coin_flips} is too large of a number. Please use only numbers up to 1000000 for coin flips."
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
