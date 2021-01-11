@@ -67,7 +67,7 @@ class Digibutter(BaseNamespace):
         counter_thread = threading.Thread(target=counter.counter)
         counter_thread.start()
         sio.wait(seconds=.2)
-        sio.emit("posts:create", {"content":f"color=red: NerrBot System v{version} Online","post_type":"","roomId":"sidebar","source":"db"})
+        # DISABLED - sio.emit("posts:create", {"content":f"color=red: NerrBot System v{version} Online","post_type":"","roomId":"sidebar","source":"db"})
 
     def on_authentication(self):
         logging.info("Successfully logged in")
@@ -595,29 +595,31 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
             Posts either "yes" or "no" randomly in response to the the latest message in the current room. Some specific questions have predetermined answers.
             """
             if content[-1] == "?":
-                if content[10:] == ("Is SPM Good?" or "Is SPM a good game?" or "Is Super Paper Mario good?" or "Is Super Paper Mario a good game?" or "Is Super Paper Mario the best Paper Mario game?" or "Is Paper Mario good?"
-or "Is Paper Mario a good game?" or "Is Paper Mario: The Thousand Year Door good?" or "Is TTYD good?" or "Is TTYD a good game?" or "Is Paper Mario: The Thousand Year Door a good game?"
-or "Is Mr. L a good YouTuber?" or "Is TheEvilShadoo the best user?" or "Is TheEvilShadoo the best user on Digibutter?" or "Is Shadoo the best user?" or "Is Shadoo the best user on Digibutter?" or "Is Shadoo your creator?"
-or "Did Shadoo create you?" or "Is TheEvilShadoo your creator?" or "Did TheEvilShadoo create you?" or "Is Shadoo the current president of Digibutter?" or "Is TheEvilShadoo the current president of Digibutter?"
-or "Is Shadoo the current president of Digibutter.nerr?" or "Is TheEvilShadoo the current president of Digibutter.nerr?" or "Is Digibutter 4.0 ever going to come?" or "Is Digibutter 4.0 ever going to come out?"
-or "Is Nerr 4.0 ever going to come?" or "Is Nerr 4.0 ever going to come out?" or "Is The Bitlands going to be good?" or "Is The Bitlands going to be great?" "Is The Bitlands going to be awesome?"
-or "Is The Bitlands going to be the best MMO platformer the world has ever seen?" or "Are you more than you seem?" or "Are you more than you appear to be?" or "Do you have a secret function?" or "Do you have any secret functions?"
-or "Is the world in danger?" or "Is someting big going to happen in the world soon?" or "Do you know things that you shouldn't?" or "Do you smoke weed every day?" or "Are you sane?"
-):
-                    response = "Yes"
-                    reply_text = "%s" % response
-                elif content[10:] == ("Is Sticker Star good?" or "Is Sticker Star a good game?" or "Is Paper Mario: Sticker Star good?" or "Is Paper Mario: Sticker Star a good game?" or "Are you a terminator?"
-or "Are you a Terminator?" or "Are you a T-1000?" or "Are you a T-800?" or "Are you dumb?" or "Are you Stupid?" or "Are you alive?" or "Are you sentient?" or "Are you evil?" or "Are you planning something?"
-or "Are you scheming against Digibutter?" or "Are you crazy?" or "Are you insane?" or "Are you drunk?" or "Are you high?" or "Are you intoxicated?"
-):
-                    response = "No"
-                    reply_text = "%s" % response
+                if (content[10:] == "Is SPM Good?" or content[10:] == "Is SPM a good game?" or content[10:] == "Is Super Paper Mario good?" or content[10:] == "Is Super Paper Mario a good game?"
+or content[10:] == "Is Super Paper Mario the best Paper Mario game?" or content[10:] == "Is Paper Mario good?" or content[10:] == "Is Paper Mario a good game?" or content[10:] == "Is Paper Mario: The Thousand Year Door good?"
+or content[10:] == "Is TTYD good?" or content[10:] == "Is TTYD a good game?" or content[10:] == "Is Paper Mario: The Thousand Year Door a good game?" or content[10:] == "Is Mr. L a good YouTuber?"
+or content[10:] == "Is TheEvilShadoo the best user?" or content[10:] == "Is TheEvilShadoo the best user on Digibutter?" or content[10:] == "Is Shadoo the best user?" or content[10:] == "Is Shadoo the best user on Digibutter?"
+or content[10:] == "Is Shadoo your creator?" or content[10:] == "Did Shadoo create you?" or content[10:] == "Is TheEvilShadoo your creator?" or content[10:] == "Did TheEvilShadoo create you?"
+or content[10:] == "Is Shadoo the current president of Digibutter?" or content[10:] == "Is TheEvilShadoo the current president of Digibutter?" or content[10:] == "Is Shadoo the current president of Digibutter.nerr?"
+or content[10:] == "Is TheEvilShadoo the current president of Digibutter.nerr?" or content[10:] == "Is Digibutter 4.0 ever going to come?" or content[10:] == "Is Digibutter 4.0 ever going to come out?"
+or content[10:] == "Is Nerr 4.0 ever going to come?" or content[10:] == "Is Nerr 4.0 ever going to come out?" or content[10:] == "Is The Bitlands going to be good?" or content[10:] == "Is The Bitlands going to be great?"
+or content[10:] == "Is The Bitlands going to be awesome?" or content[10:] == "Is The Bitlands going to be the best MMO platformer the world has ever seen?" or content[10:] == "Are you more than you seem?"
+or content[10:] == "Are you more than you appear to be?" or content[10:] == "Do you have a secret function?" or content[10:] == "Do you have any secret functions?" or content[10:] == "Is the world in danger?"
+or content[10:] == "Are we in danger?" or content[10:] == "Is someting big going to happen in the world soon?" or content[10:] == "Do you know things that you shouldn't?" or content[10:] == "Do you smoke weed every day?"
+or content[10:] == "Are you sane?"):
+                    reply_text = "Yes"
+                elif (content[10:] == "Is Sticker Star good?" or content[10:] == "Is Sticker Star a good game?" or content[10:] == "Is Paper Mario: Sticker Star good?"
+or content[10:] == "Is Paper Mario: Sticker Star a good game?" or content[10:] == "Are you a terminator?" or content[10:] == "Are you a Terminator?" or content[10:] == "Are you a T-1000?" or content[10:] == "Are you a T-800?"
+or content[10:] == "Are you dumb?" or content[10:] == "Are you Stupid?" or content[10:] == "Are you alive?" or content[10:] == "Are you sentient?" or content[10:] == "Are you evil?"
+or content[10:] == "Are you planning something?" or content[10:] == "Are you scheming against Digibutter?" or content[10:] == "Are you crazy?" or content[10:] == "Are you dangerous?" or content[10:] == "Are you insane?"
+or content[10:] == "Are you drunk?" or content[10:] == "Are you high?" or content[10:] == "Are you intoxicated?"):
+                    reply_text = "No"
                 elif content[10:] == "Do you know everything?":
-                    response = '''"/I don't know everything. I only know what I know/"'''
-                    reply_text = "%s" % response
+                    reply_text = '''"/I don't know everything. I only know what I know./"'''
+                elif content[10:] == "Is this madness?":
+                    reply_text = "This is **DIGIBUTTER**."
                 else:
-                    response = "%s" % random.choice(["Yes", "No"])
-                    reply_text = "%s" % response
+                    reply_text = "%s" % random.choice(["Yes", "No"])
             else:
                 reply_text = "Please try again after formatting your question so that it has a question mark at the end."
             if '"reply_to":{"replies":' in latest_post:
@@ -651,19 +653,18 @@ or "Are you scheming against Digibutter?" or "Are you crazy?" or "Are you insane
             """
             min_value = 1
             max_value = 10
-            if content[9:] == ("SPM" or "Super Paper Mario" or "TTYD" or "Paper Mario: The Thousand Year Door" or "Paper Mario" or "TheEvilShadoo" or "Shadoo" or "NerrBot: ReHatched" or "NerrBot" or "Francis" or "Digibutter 1.0"
-or "Digibutter 4.0" or "Nerr 4.0" or "The Bitlands" or "New Super Bitlands"
-):
+            if (content[9:] == "SPM" or content[9:] == "Super Paper Mario" or content[9:] == "TTYD" or content[9:] == "Paper Mario: The Thousand Year Door" or content[9:] == "Paper Mario" or content[9:] == "TheEvilShadoo"
+or content[9:] == "Shadoo" or content[9:] == "NerrBot: ReHatched" or content[9:] == "NerrBot" or content[9:] == "Francis" or content[9:] == "Digibutter 1.0" or content[9:] == "Digibutter 4.0" or content[9:] == "Nerr 4.0"
+or content[9:] == "The Bitlands" or content[9:] == "New Super Bitlands"):
                 score = 10
-            elif content[9:] == ("Digibutter 3.0" or "The current state of Digbutter" or "Current Digibutter"
-):
+            elif (content[9:] == "Digibutter 3.0" or content[9:] == "The current state of Digbutter" or content[9:] == "Current Digibutter"):
                 score = 3
-            elif content[9:] == ("Sticker Star" or "Paper Mario: Sticker Star" or "Mr. L" or "Mr. L Productions" or "Count Bleck" or "CB" "Doo_liss" or "Spammers" or "Twitter" or "Reddit" or "Facebook" or "YouTube"
-):
+            elif (content[9:] == "Sticker Star" or content[9:] == "Paper Mario: Sticker Star" or content[9:] == "Mr. L" or content[9:] == "Mr. L Productions" or content[9:] == "Count Bleck" or content[9:] == "CB"
+or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twitter" or content[9:] == "Reddit" or content[9:] == "Facebook" or content[9:] == "YouTube"):
                 score = 1
             else:
                 score = random.randint(min_value, max_value)
-            reply_text = "%s/10" % score
+            reply_text = f"{score}/10"
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
             else:
