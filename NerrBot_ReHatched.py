@@ -67,7 +67,7 @@ class Digibutter(BaseNamespace):
         counter_thread = threading.Thread(target=counter.counter)
         counter_thread.start()
         sio.wait(seconds=.2)
-        # DISABLED - sio.emit("posts:create", {"content":f"color=red: NerrBot System v{version} Online","post_type":"","roomId":"sidebar","source":"db"})
+        sio.emit("posts:create", {"content":f"color=red: NerrBot System v{version} Online","post_type":"","roomId":"sidebar","source":"db"})
 
     def on_authentication(self):
         logging.info("Successfully logged in")
