@@ -752,7 +752,7 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
             """
             if "NerrBot: ReHatched" not in Digibutter.online_user_list[-1]:
                 Digibutter.online_user_list.remove("NerrBot: ReHatched")
-                Digibutter.online_user_list.insert(-1, "NerrBot: ReHatched")
+                Digibutter.online_user_list.append("NerrBot: ReHatched")
             online_users = ', '.join(Digibutter.online_user_list)
             logging.info(f"Current online users: {online_users}")
             print(f"\n> Current online users: {online_users}")
