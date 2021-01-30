@@ -1,7 +1,7 @@
 import colorama
 colorama.init()
 
-version = "1.1.1"
+version = "1.2.0 pre-release"
 
 print(colorama.Fore.GREEN + f"===================================================NerrBot: RH v{version}===================================================" + colorama.Fore.LIGHTBLUE_EX + """
 
@@ -38,9 +38,16 @@ import random
 import datetime
 import pytz
 import json5
+import json
 from socketIO_client import SocketIO, BaseNamespace
+import counter
 
-import utilities.counter as counter
+def write_json(data, filename):
+    """
+    JSON Writing Function
+    """
+    with open (filename, "w") as f:
+        json.dump(data, f, indent=4)
 
 # Logging Configuration
 logging.basicConfig(format = "%(asctime)s: %(levelname)s: %(name)s: %(message)s", datefmt='%m/%d/%Y %H:%M:%S', filename='NerrBot RH.log', filemode='w', level = logging.DEBUG)
@@ -56,17 +63,17 @@ class Digibutter(BaseNamespace):
         logging.info("Attempting to login...")
         print("\n> Attempting to login...")
         sio.emit("ready", Digibutter.on_authentication(BaseNamespace))
-        sio.wait(seconds=.2)
+        sio.wait(.2)
         sio.emit("posts:index", {"topic": False, "room": "db", "topicsOnly": False, "source": "db"}, Digibutter.on_all_posts_index_response)
-        sio.wait(seconds=.2)
+        sio.wait(.2)
         sio.emit("posts:index", {"topic": False, "room": "nf", "topicsOnly": False, "source": "db"}, Digibutter.on_gaming_news_index_response)
-        sio.wait(seconds=.2)
+        sio.wait(.2)
         sio.emit("posts:index", {"topic": False, "room": "sidebar", "topicsOnly": False, "source": "db"}, Digibutter.on_the_dump_index_response)
-        sio.wait(seconds=.2)
+        sio.wait(.2)
         sio.emit("posts:chats", {"room": "sidebar"}, Digibutter.on_NerrChat_chatlog_response)
         counter_thread = threading.Thread(target=counter.counter)
         counter_thread.start()
-        sio.wait(seconds=.2)
+        sio.wait(.2)
         sio.emit("posts:create", {"content":f"color=red: NerrBot System v{version} Online","post_type":"","roomId":"sidebar","source":"db"})
 
     def on_authentication(self):
@@ -83,134 +90,155 @@ class Digibutter(BaseNamespace):
         logging.info("Attempting to login...")
         print("\n> Attempting to login...")
         sio.emit("ready", Digibutter.on_authentication(BaseNamespace))
-        sio.wait(seconds=.2)
+        sio.wait(.2)
         sio.emit("posts:index", {"topic": False, "room": "db", "topicsOnly": False, "source": "db"}, Digibutter.on_all_posts_index_response)
-        sio.wait(seconds=.2)
+        sio.wait(.2)
         sio.emit("posts:index", {"topic": False, "room": "nf", "topicsOnly": False, "source": "db"}, Digibutter.on_gaming_news_index_response)
-        sio.wait(seconds=.2)
+        sio.wait(.2)
         sio.emit("posts:index", {"topic": False, "room": "sidebar", "topicsOnly": False, "source": "db"}, Digibutter.on_the_dump_index_response)
-        sio.wait(seconds=.2)
+        sio.wait(.2)
         sio.emit("posts:chats", {"room": "sidebar"}, Digibutter.on_NerrChat_chatlog_response)
-        # DISABLED - sio.emit("posts:create", {"content":"I disconnected unexpectedly there, sorry!","post_type":"","roomId":"sidebar","source":"db"})
+        sio.wait(.2)
+        sio.emit("posts:create", {"content":"I disconnected unexpectedly there, sorry!","post_type":"","roomId":"sidebar","source":"db"})
 
     def on_all_posts_index_response(self):
         print('\n> Received posts index for room "All Posts"')
         print('\n> Parsing index...')
-        try:
-            index = json5.loads(str(self))
-            latest_post = index['posts'][0]
-            id = index['posts'][0]['_id']
-            room_id = 'db'
-            content = index['posts'][0]['content']
-            post_type = ''
-            print('\n> "All Posts" index successfully parsed')
-        except:
-            logging.error('Failed to parse inde for "All Posts"')
-            print('\n> ERROR: Failed to parse index for "All Posts"')
-            index = None
-            latest_post = None
-            id = None
-            room_id = None
-            content = None
-            post_type = None
-        Digibutter.do_logic(Digibutter, latest_post, id, room_id, content, post_type)
+        all_posts_index = json5.loads(str(self))
+        latest_post = all_posts_index['posts'][0]
+        post_id = all_posts_index['posts'][0]['_id']
+        room_id = 'db'
+        content = all_posts_index['posts'][0]['content']
+        post_type = ''
+        username = all_posts_index['posts'][0]['user']['name']
+        user_id = all_posts_index['posts'][0]['user']['id']
+        logging.info('"All Posts" index successfully parsed')
+        print('\n> "All Posts" index successfully parsed')
+        Digibutter.record_user(Digibutter, username, user_id)
+        with open("autolike_users.json", "r") as autolike_users:
+            data = json.load(autolike_users)
+        for user in data['users']:
+            if user['user_id'] == user_id:
+                sio.emit("posts:like", {"like":1,"post_id":f"{post_id}"})
+                break
+        Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_gaming_news_index_response(self):
         print('\n> Received posts index for room "Gaming News"')
         print('\n> Parsing index...')
-        try:
-            index = json5.loads(str(self))
-            latest_post = index['posts'][0]
-            id = index['posts'][0]['_id']
-            room_id = 'nf'
-            content = index['posts'][0]['content']
-            post_type = ''
-            print('\n> "Gaming News" index successfully parsed')
-        except:
-            logging.error('Failed to parse index for "Gaming News"')
-            print('\n> ERROR: Failed to parse index for "Gaming News"')
-            index = None
-            latest_post = None
-            id = None
-            room_id = None
-            content = None
-            post_type = None
-        Digibutter.do_logic(Digibutter, latest_post, id, room_id, content, post_type)
+        gaming_news_index = json5.loads(str(self))
+        latest_post = gaming_news_index['posts'][0]
+        post_id = gaming_news_index['posts'][0]['_id']
+        room_id = 'nf'
+        content = gaming_news_index['posts'][0]['content']
+        post_type = ''
+        username = gaming_news_index['posts'][0]['user']['name']
+        user_id = gaming_news_index['posts'][0]['user']['id']
+        logging.info('"Gaming News" index successfully parsed')
+        print('\n> "Gaming News" index successfully parsed')
+        Digibutter.record_user(Digibutter, username, user_id)
+        with open("autolike_users.json", "r") as autolike_users:
+            data = json.load(autolike_users)
+        for user in data['users']:
+            if user['user_id'] == user_id:
+                sio.emit("posts:like", {"like":1,"post_id":f"{post_id}"})
+                break
+        Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_the_dump_index_response(self):
         print('\n> Received posts index for room "The Dump"')
         print('\n> Parsing index...')
-        try:
-            index = json5.loads(str(self))
-            latest_post = index['posts'][0]
-            id = index['posts'][0]['_id']
-            room_id = 'sidebar'
-            content = index['posts'][0]['content']
-            post_type = ''
-            print('\n> "The Dump" index successfully parsed')
-        except:
-            logging.error('Failed to parse index for "The Dump"')
-            print('\n> ERROR: Failed to parse index for "The Dump"')
-            index = None
-            latest_post = None
-            id = None
-            room_id = None
-            content = None
-            post_type = None
-        Digibutter.do_logic(Digibutter, latest_post, id, room_id, content, post_type)
+        the_dump_index = json5.loads(str(self))
+        latest_post = the_dump_index['posts'][0]
+        post_id = the_dump_index['posts'][0]['_id']
+        room_id = 'sidebar'
+        content = the_dump_index['posts'][0]['content']
+        post_type = ''
+        username = the_dump_index['posts'][0]['user']['name']
+        user_id = the_dump_index['posts'][0]['user']['id']
+        logging.info('"The Dump" index successfully parsed')
+        print('\n> "The Dump" index successfully parsed')
+        Digibutter.record_user(Digibutter, username, user_id)
+        with open("autolike_users.json", "r") as autolike_users:
+            data = json.load(autolike_users)
+        for user in data['users']:
+            if user['user_id'] == user_id:
+                sio.emit("posts:like", {"like":1,"post_id":f"{post_id}"})
+                break
+        Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_NerrChat_chatlog_response(self):
         print('\n> Received index for "NerrChat"')
         print('\n> Parsing index...')
-        try:
-            index = json5.loads(str(self))
-            latest_post = index['posts'][0]
-            id = index['posts'][0]['_id']
-            room_id = 'sidebar'
-            content = index['posts'][0]['content']
-            post_type = 'chat'
-            print('\n> "NerrChat" index successfully parsed')
-        except:
-            logging.error('Failed to parse index for "NerrChat"')
-            print('\n> ERROR: Failed to parse index for "NerrChat"')
-            index = None
-            latest_post = None
-            id = None
-            room_id = None
-            content = None
-            post_type = None
-        Digibutter.do_logic(Digibutter, latest_post, id, room_id, content, post_type)
+        NerrChat_index = json5.loads(str(self))
+        latest_post = NerrChat_index['posts'][0]
+        post_id = NerrChat_index['posts'][0]['_id']
+        room_id = 'sidebar'
+        content = NerrChat_index['posts'][0]['content']
+        post_type = 'chat'
+        username = NerrChat_index['posts'][0]['user']['name']
+        user_id = NerrChat_index['posts'][0]['user']['id']
+        logging.info('"NerrChat" index successfully parsed')
+        print('\n> "NerrChat" index successfully parsed')
+        Digibutter.record_user(Digibutter, username, user_id)
+        Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_new_post(self):
-        print('\n> Received a new post:')
-        try:
-            latest_post = json5.loads(str(self))
-            id = latest_post['_id']
-            if "'id': 'sidebar'" in str(latest_post):
-                room_id = 'sidebar'
-            elif "'id': 'nf'" in str(latest_post):
-                room_id = 'nf'
-            else:
-                room_id = 'db'
-            content = latest_post['content']
-            post_type = latest_post['post_type']
+        latest_post = json5.loads(str(self))
+        post_id = latest_post['_id']
+        if "'id': 'sidebar'" in str(latest_post):
+            room_id = 'sidebar'
+        elif "'id': 'nf'" in str(latest_post):
+            room_id = 'nf'
+        else:
+            room_id = 'db'
+        content = latest_post['content']
+        post_type = latest_post['post_type']
+        username = latest_post['user']['name']
+        user_id = latest_post['user']['id']
+        if post_type == "like1":
+            original_post_content = latest_post['reply_to']['content']
+            original_poster = latest_post['reply_to']['user']['name']
+            logging.info(f"{username} liked {original_poster}'s latest post")
+            print(f"\n> {username} liked {original_poster}'s latest post")
+            Digibutter.record_user(Digibutter, username, user_id)
+        elif post_type == "like2":
+            original_post_content = latest_post['reply_to']['content']
+            original_poster = latest_post['reply_to']['user']['name']
+            logging.info(f"{username} disliked {original_poster}'s latest post")
+            print(f"\n> {username} disliked {original_poster}'s latest post")
+            Digibutter.record_user(Digibutter, username, user_id)
+        else:
             logging.info('Received a new post: ' + content)
-            print(content)
-        except:
-            logging.error('Failed to parse post content')
-            print('\n> ERROR: Failed to parse post content')
-            latest_post = None
-            id = None
-            room_id = None
-            content = None
-            post_type = None
-        Digibutter.do_logic(Digibutter, latest_post, id, room_id, content, post_type)
+            print(f'\n> Received a new post from {username}:\n{content}')
+            Digibutter.record_user(Digibutter, username, user_id)
+            with open("autolike_users.json", "r") as autolike_users:
+                data = json.load(autolike_users)
+            for user in data['users']:
+                if user['user_id'] == user_id:
+                    sio.emit("posts:like", {"like":1,"post_id":f"{post_id}"})
+                    break
+            Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_userupdate(self):
         online_user_index = self
         Digibutter.online_user_list = []
         for user in online_user_index:
             Digibutter.online_user_list.append(user["name"])
+
+    def record_user(self, username, user_id):
+            """
+            Whenever a new user posts a message, this records their username and user_id into a dictionary
+            """
+            with open("users.json", "r") as user_records:
+                data = json.load(user_records)
+            for user in data['users']:
+                if user['username'] == username:
+                    break
+            else:
+                user = {"username": username, "user_id": user_id}
+                data['users'].append(user)
+                write_json(data, filename="users.json")
 
     class tictactoe:
         """
@@ -290,14 +318,14 @@ class Digibutter(BaseNamespace):
             return move
 
         def is_winner(self, values, symbol):
-            return (values[0] == symbol and values[1] == symbol and values[2] == symbol or 
-values[3] == symbol and values[4] == symbol and values[5] == symbol or 
-values[6] == symbol and values[7] == symbol and values[8] == symbol or 
-values[0] == symbol and values[3] == symbol and values[6] == symbol or 
-values[1] == symbol and values[4] == symbol and values[7] == symbol or 
-values[2] == symbol and values[5] == symbol and values[8] == symbol or 
-values[0] == symbol and values[4] == symbol and values[8] == symbol or 
-values[2] == symbol and values[4] == symbol and values[6] == symbol)
+            return (values[0] == symbol and values[1] == symbol and values[2] == symbol
+            or values[3] == symbol and values[4] == symbol and values[5] == symbol
+            or values[6] == symbol and values[7] == symbol and values[8] == symbol
+            or values[0] == symbol and values[3] == symbol and values[6] == symbol
+            or values[1] == symbol and values[4] == symbol and values[7] == symbol
+            or values[2] == symbol and values[5] == symbol and values[8] == symbol
+            or values[0] == symbol and values[4] == symbol and values[8] == symbol
+            or values[2] == symbol and values[4] == symbol and values[6] == symbol)
 
         def is_board_full(self, values):
             if Digibutter.tictactoe.values.count(f'{" ":<2}') > 0:
@@ -305,112 +333,127 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
             else:
                 return True
 
-    # Class Methods
-    def do_logic(self, latest_post, id, room_id, content, post_type):
+    def do_logic(self, latest_post, post_id, room_id, content, post_type, username, user_id):
         """
         Determines the response message that NerrBot: ReHatched should reply with and posts the response message as a reply to the latest message in the current room
         """
         if content[0:3] == "!rh":
             if content == "!rh":
-                Digibutter.responses.about_message(Digibutter, latest_post, id, room_id, content, post_type)
+                Digibutter.responses.about_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:8] == "!rh help":
                 if content == "!rh help":
-                    Digibutter.responses.help_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help yesno":
-                    Digibutter.responses.help_yesno_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_yesno_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help rate":
-                    Digibutter.responses.help_rate_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_rate_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help discord":
-                    Digibutter.responses.help_discord_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_discord_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help chat":
-                    Digibutter.responses.discord_only_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.discord_only_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help relay":
-                    Digibutter.responses.discord_only_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.discord_only_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help roll":
-                    Digibutter.responses.help_roll_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_roll_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help autorelay":
-                    Digibutter.responses.discord_only_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.discord_only_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help online":
-                    Digibutter.responses.help_online_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_online_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help echo":
-                    Digibutter.responses.help_echo_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_echo_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help time":
-                    Digibutter.responses.help_time_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_time_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help tictactoe":
-                    Digibutter.responses.help_tictactoe_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_tictactoe_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help flip":
-                    Digibutter.responses.help_flip_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.help_flip_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                elif content == "!rh help autolike":
+                    Digibutter.responses.help_autolike_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 else:
-                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:9] == "!rh yesno":
                 if content == "!rh yesno":
-                    Digibutter.responses.specify_yesno_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.specify_yesno_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content[0:10] == "!rh yesno ":
-                    Digibutter.responses.yesno_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.yesno_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 else:
-                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:8] == "!rh rate":
                 if content == "!rh rate":
-                    Digibutter.responses.specify_rate_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.specify_rate_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content[0:9] == "!rh rate ":
-                    Digibutter.responses.rate_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.rate_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 else:
-                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content == "!rh discord":
-                Digibutter.responses.discord_message(Digibutter, latest_post, id, room_id, content, post_type)
+                Digibutter.responses.discord_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:8] == "!rh roll":
                 if content == "!rh roll":
-                    Digibutter.responses.default_roll_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.default_roll_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content[0:9] == "!rh roll ":
-                    Digibutter.responses.custom_roll_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.custom_roll_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 else:
-                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content == "!rh online":
-                Digibutter.responses.online_message(Digibutter, latest_post, id, room_id, content, post_type)
+                Digibutter.responses.online_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:8] == "!rh echo":
                 if content == "!rh echo":
-                    Digibutter.responses.specify_echo_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.specify_echo_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif "!rh echo !rh echo" in content:
-                    Digibutter.responses.wise_guy_echo_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.wise_guy_echo_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content[0:9] == "!rh echo ":
-                    Digibutter.responses.echo_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.echo_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 else:
-                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:8] == "!rh time":
                 if content == "!rh time":
-                    Digibutter.responses.UTC_time_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.UTC_time_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content[0:9] == "!rh time ":
-                    Digibutter.responses.custom_time_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.custom_time_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 else:
-                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:13] == "!rh tictactoe":
                 if content == "!rh tictactoe":
-                    Digibutter.responses.specify_tictactoe_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.specify_tictactoe_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh tictactoe new":
-                    Digibutter.responses.new_tictactoe_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.new_tictactoe_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh tictactoe display":
-                    Digibutter.responses.display_ticactoe_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.display_ticactoe_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh tictactoe help":
-                    Digibutter.responses.tictactoe_help_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.tictactoe_help_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content[0:14] == "!rh tictactoe ":
-                    Digibutter.responses.tictactoe_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.tictactoe_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 else:
-                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:8] == "!rh flip":
                 if content == "!rh flip":
-                    Digibutter.responses.default_flip_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.default_flip_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content[0:9] == "!rh flip ":
-                    Digibutter.responses.custom_flip_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.custom_flip_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 else:
-                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+            elif content[0:12] == "!rh autolike":
+                if content[13:] == "help":
+                    Digibutter.responses.autolike_help_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                # DISABLED - elif user_id == "5b6d7f666bc987d3195169e9":
+                elif content[13:18] == "start":
+                    Digibutter.responses.autolike_start_message(Digibutter, latest_post, post_id, room_id, content, post_type, username)
+                elif content[13:17] == "stop":
+                    Digibutter.responses.autolike_stop_message(Digibutter, latest_post, post_id, room_id, content, post_type, username)
+                else:
+                    Digibutter.responses.not_recognized_message
+                # else:
+                    # DISABLED - Digibutter.responses.autolike_invalid_message(Digibutter, latest_post, post_id, room_id, content, post_type, username)
+            elif content[0:] == "!rh autodislike":
+                pass
             else:
-                Digibutter.responses.not_recognized_message(Digibutter, latest_post, id, room_id, content, post_type)
+                Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
 
     class responses:
         """
         NerrBot: ReHatched's code to respond to specific commands
         """
-        def about_message(self, latest_post, id, room_id, content, post_type):
+        def about_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the about message as a reply to the latest message in the current room
             """
@@ -421,11 +464,11 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def help_message(self, latest_post, id, room_id, content, post_type):
+        def help_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message as a reply to the latest message in the current room
             """
@@ -436,11 +479,11 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def help_yesno_message(self, latest_post, id, room_id, content, post_type):
+        def help_yesno_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the yesno command as a reply to the latest topic in the current room
             """
@@ -451,11 +494,11 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def help_rate_message(self, latest_post, id, room_id, content, post_type):
+        def help_rate_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the rate command as a reply to the latest topic in the current room
             """
@@ -466,11 +509,11 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def help_discord_message(self, latest_post, id, room_id, content, post_type):
+        def help_discord_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the discord command as a reply to the latest topic in the current room
             """
@@ -481,11 +524,11 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def help_roll_message(self, latest_post, id, room_id, content, post_type):
+        def help_roll_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the roll command as a reply to the latest topic in the current room
             """
@@ -496,11 +539,11 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def help_online_message(self, latest_post, id, room_id, content, post_type):
+        def help_online_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the online command as a reply to the latest topic in the current room
             """
@@ -511,11 +554,11 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
             
-        def help_echo_message(self, latest_post, id, room_id, content, post_type):
+        def help_echo_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the echo command as a reply to the latest topic in the current room
             """
@@ -526,11 +569,11 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def help_time_message(self, latest_post, id, room_id, content, post_type):
+        def help_time_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the time command as a reply to the latest topic in the current room
             """
@@ -541,11 +584,11 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def help_tictactoe_message(self, latest_post, id, room_id, content, post_type):
+        def help_tictactoe_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the tictactoe command as a reply to the latest topic in the current room
             """
@@ -556,11 +599,11 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def help_flip_message(self, latest_post, id, room_id, content, post_type):
+        def help_flip_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the flip command as a reply to the latest topic in the current room
             """
@@ -571,11 +614,17 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def discord_only_message(self, latest_post, id, room_id, content, post_type):
+        def help_autolike_message(self, latest_post, post_id, room_id, content, post_type):
+            """
+
+            """
+            pass
+
+        def discord_only_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the Discord only command message as a reply to the latest message in the current room
             """
@@ -586,33 +635,33 @@ values[2] == symbol and values[4] == symbol and values[6] == symbol)
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def yesno_message(self, latest_post, id, room_id, content, post_type):
+        def yesno_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts either "yes" or "no" randomly in response to the the latest message in the current room. Some specific questions have predetermined answers.
             """
             if content[-1] == "?":
                 if (content[10:] == "Is SPM Good?" or content[10:] == "Is SPM a good game?" or content[10:] == "Is Super Paper Mario good?" or content[10:] == "Is Super Paper Mario a good game?"
-or content[10:] == "Is Super Paper Mario the best Paper Mario game?" or content[10:] == "Is Paper Mario good?" or content[10:] == "Is Paper Mario a good game?" or content[10:] == "Is Paper Mario: The Thousand Year Door good?"
-or content[10:] == "Is TTYD good?" or content[10:] == "Is TTYD a good game?" or content[10:] == "Is Paper Mario: The Thousand Year Door a good game?" or content[10:] == "Is Mr. L a good YouTuber?"
-or content[10:] == "Is TheEvilShadoo the best user?" or content[10:] == "Is TheEvilShadoo the best user on Digibutter?" or content[10:] == "Is Shadoo the best user?" or content[10:] == "Is Shadoo the best user on Digibutter?"
-or content[10:] == "Is Shadoo your creator?" or content[10:] == "Did Shadoo create you?" or content[10:] == "Is TheEvilShadoo your creator?" or content[10:] == "Did TheEvilShadoo create you?"
-or content[10:] == "Is Shadoo the current president of Digibutter?" or content[10:] == "Is TheEvilShadoo the current president of Digibutter?" or content[10:] == "Is Shadoo the current president of Digibutter.nerr?"
-or content[10:] == "Is TheEvilShadoo the current president of Digibutter.nerr?" or content[10:] == "Is Digibutter 4.0 ever going to come?" or content[10:] == "Is Digibutter 4.0 ever going to come out?"
-or content[10:] == "Is Nerr 4.0 ever going to come?" or content[10:] == "Is Nerr 4.0 ever going to come out?" or content[10:] == "Is The Bitlands going to be good?" or content[10:] == "Is The Bitlands going to be great?"
-or content[10:] == "Is The Bitlands going to be awesome?" or content[10:] == "Is The Bitlands going to be the best MMO platformer the world has ever seen?" or content[10:] == "Are you more than you seem?"
-or content[10:] == "Are you more than you appear to be?" or content[10:] == "Do you have a secret function?" or content[10:] == "Do you have any secret functions?" or content[10:] == "Is the world in danger?"
-or content[10:] == "Are we in danger?" or content[10:] == "Is someting big going to happen in the world soon?" or content[10:] == "Do you know things that you shouldn't?" or content[10:] == "Do you smoke weed every day?"
-or content[10:] == "Are you sane?"):
+                or content[10:] == "Is Super Paper Mario the best Paper Mario game?" or content[10:] == "Is Paper Mario good?" or content[10:] == "Is Paper Mario a good game?" or content[10:] == "Is Paper Mario: The Thousand Year Door good?"
+                or content[10:] == "Is TTYD good?" or content[10:] == "Is TTYD a good game?" or content[10:] == "Is Paper Mario: The Thousand Year Door a good game?" or content[10:] == "Is Mr. L a good YouTuber?"
+                or content[10:] == "Is TheEvilShadoo the best user?" or content[10:] == "Is TheEvilShadoo the best user on Digibutter?" or content[10:] == "Is Shadoo the best user?" or content[10:] == "Is Shadoo the best user on Digibutter?"
+                or content[10:] == "Is Shadoo your creator?" or content[10:] == "Did Shadoo create you?" or content[10:] == "Is TheEvilShadoo your creator?" or content[10:] == "Did TheEvilShadoo create you?"
+                or content[10:] == "Is Shadoo the current president of Digibutter?" or content[10:] == "Is TheEvilShadoo the current president of Digibutter?" or content[10:] == "Is Shadoo the current president of Digibutter.nerr?"
+                or content[10:] == "Is TheEvilShadoo the current president of Digibutter.nerr?" or content[10:] == "Is Digibutter 4.0 ever going to come?" or content[10:] == "Is Digibutter 4.0 ever going to come out?"
+                or content[10:] == "Is Nerr 4.0 ever going to come?" or content[10:] == "Is Nerr 4.0 ever going to come out?" or content[10:] == "Is The Bitlands going to be good?" or content[10:] == "Is The Bitlands going to be great?"
+                or content[10:] == "Is The Bitlands going to be awesome?" or content[10:] == "Is The Bitlands going to be the best MMO platformer the world has ever seen?" or content[10:] == "Are you more than you seem?"
+                or content[10:] == "Are you more than you appear to be?" or content[10:] == "Do you have a secret function?" or content[10:] == "Do you have any secret functions?" or content[10:] == "Is the world in danger?"
+                or content[10:] == "Are we in danger?" or content[10:] == "Is someting big going to happen in the world soon?" or content[10:] == "Do you know things that you shouldn't?" or content[10:] == "Do you smoke weed every day?"
+                or content[10:] == "Are you sane?"):
                     reply_text = "Yes"
                 elif (content[10:] == "Is Sticker Star good?" or content[10:] == "Is Sticker Star a good game?" or content[10:] == "Is Paper Mario: Sticker Star good?"
-or content[10:] == "Is Paper Mario: Sticker Star a good game?" or content[10:] == "Are you a terminator?" or content[10:] == "Are you a Terminator?" or content[10:] == "Are you a T-1000?" or content[10:] == "Are you a T-800?"
-or content[10:] == "Are you dumb?" or content[10:] == "Are you Stupid?" or content[10:] == "Are you alive?" or content[10:] == "Are you sentient?" or content[10:] == "Are you evil?"
-or content[10:] == "Are you planning something?" or content[10:] == "Are you scheming against Digibutter?" or content[10:] == "Are you crazy?" or content[10:] == "Are you dangerous?" or content[10:] == "Are you insane?"
-or content[10:] == "Are you drunk?" or content[10:] == "Are you high?" or content[10:] == "Are you intoxicated?"):
+                or content[10:] == "Is Paper Mario: Sticker Star a good game?" or content[10:] == "Are you a terminator?" or content[10:] == "Are you a Terminator?" or content[10:] == "Are you a T-1000?" or content[10:] == "Are you a T-800?"
+                or content[10:] == "Are you dumb?" or content[10:] == "Are you Stupid?" or content[10:] == "Are you alive?" or content[10:] == "Are you sentient?" or content[10:] == "Are you evil?"
+                or content[10:] == "Are you planning something?" or content[10:] == "Are you scheming against Digibutter?" or content[10:] == "Are you crazy?" or content[10:] == "Are you dangerous?" or content[10:] == "Are you insane?"
+                or content[10:] == "Are you drunk?" or content[10:] == "Are you high?" or content[10:] == "Are you intoxicated?"):
                     reply_text = "No"
                 elif content[10:] == "Do you know everything?":
                     reply_text = '''"/I don't know everything. I only know what I know./"'''
@@ -628,11 +677,11 @@ or content[10:] == "Are you drunk?" or content[10:] == "Are you high?" or conten
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def specify_yesno_message(self, latest_post, id, room_id, content, post_type):
+        def specify_yesno_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Asks for something to respond with yes or no to when not previously specified
             """
@@ -643,24 +692,24 @@ or content[10:] == "Are you drunk?" or content[10:] == "Are you high?" or conten
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def rate_message(self, latest_post, id, room_id, content, post_type):
+        def rate_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts a random score out of ten in response to the the latest message in the current room
             """
             min_value = 1
             max_value = 10
             if (content[9:] == "SPM" or content[9:] == "Super Paper Mario" or content[9:] == "TTYD" or content[9:] == "Paper Mario: The Thousand Year Door" or content[9:] == "Paper Mario" or content[9:] == "TheEvilShadoo"
-or content[9:] == "Shadoo" or content[9:] == "NerrBot: ReHatched" or content[9:] == "NerrBot" or content[9:] == "Francis" or content[9:] == "Digibutter 1.0" or content[9:] == "Digibutter 4.0" or content[9:] == "Nerr 4.0"
-or content[9:] == "The Bitlands" or content[9:] == "New Super Bitlands"):
+            or content[9:] == "Shadoo" or content[9:] == "NerrBot: ReHatched" or content[9:] == "NerrBot" or content[9:] == "Francis" or content[9:] == "Digibutter 1.0" or content[9:] == "Digibutter 4.0" or content[9:] == "Nerr 4.0"
+            or content[9:] == "The Bitlands" or content[9:] == "New Super Bitlands"):
                 score = 10
             elif (content[9:] == "Digibutter 3.0" or content[9:] == "The current state of Digbutter" or content[9:] == "Current Digibutter"):
                 score = 3
             elif (content[9:] == "Sticker Star" or content[9:] == "Paper Mario: Sticker Star" or content[9:] == "Mr. L" or content[9:] == "Mr. L Productions" or content[9:] == "Count Bleck" or content[9:] == "CB"
-or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twitter" or content[9:] == "Reddit" or content[9:] == "Facebook" or content[9:] == "YouTube"):
+            or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twitter" or content[9:] == "Reddit" or content[9:] == "Facebook" or content[9:] == "YouTube"):
                 score = 1
             else:
                 score = random.randint(min_value, max_value)
@@ -671,11 +720,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def specify_rate_message(self, latest_post, id, room_id, content, post_type):
+        def specify_rate_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Asks for something to rate when not previously specified
             """
@@ -686,11 +735,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def discord_message(self, latest_post, id, room_id, content, post_type):
+        def discord_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts a permanent invite link to the Digibutter Unnoficial Discord server (D.U.D.) as a reply to the latest message in the current room
             """
@@ -701,11 +750,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def default_roll_message(self, latest_post, id, room_id, content, post_type):
+        def default_roll_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the default dice roll message as a reply to the latest message in the current room
             """
@@ -719,11 +768,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def custom_roll_message(self, latest_post, id, room_id, content, post_type):
+        def custom_roll_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the custom dice roll message as a reply to the latest message in the current room
             """
@@ -732,7 +781,7 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 max_value = int(content[9:])    
             except ValueError:
                 max_value = content[9:]
-                Digibutter.responses.NaN_error_message(Digibutter, latest_post, id, room_id, content, post_type, max_value)
+                Digibutter.responses.NaN_error_message(Digibutter, latest_post, post_id, room_id, content, post_type, max_value)
                 return None
             roll = random.randint(min_value, max_value)
             reply_text = f"You rolled a {roll}!"
@@ -742,11 +791,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def online_message(self, latest_post, id, room_id, content, post_type):
+        def online_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts a list of the current online users
             """
@@ -754,8 +803,6 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 Digibutter.online_user_list.remove("NerrBot: ReHatched")
                 Digibutter.online_user_list.append("NerrBot: ReHatched")
             online_users = ', '.join(Digibutter.online_user_list)
-            logging.info(f"Current online users: {online_users}")
-            print(f"\n> Current online users: {online_users}")
             reply_text = f"Online users: {online_users}"
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
@@ -763,11 +810,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def echo_message(self, latest_post, id, room_id, content, post_type):
+        def echo_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts an echo of whatever the user posted after the command as a reply to the latest message in the current room
             """
@@ -778,11 +825,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def specify_echo_message(self, latest_post, id, room_id, content, post_type):
+        def specify_echo_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Asks for something to echo when not previously specified
             """
@@ -793,11 +840,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def wise_guy_echo_message(self, latest_post, id, room_id, content, post_type):
+        def wise_guy_echo_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Prevents Digibutter from being spammed, NerrBot:ReHatched from breaking, and makes fun of the user all at the same time
             """
@@ -808,11 +855,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def UTC_time_message(self, latest_post, id, room_id, content, post_type):
+        def UTC_time_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the current date and time in UTC as a reply to the latest message in the current room
             """
@@ -823,11 +870,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def custom_time_message(self, latest_post, id, room_id, content, post_type):
+        def custom_time_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the current date and time for the specified timezone as a reply to the latest message in the current room
             """
@@ -842,11 +889,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def tictactoe_message(self, latest_post, id, room_id, content, post_type):
+        def tictactoe_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts an updated version of the tictactoe board as a reply to the latest message in the current room as the game progresses
             """
@@ -929,17 +976,17 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def new_tictactoe_message(self, latest_post, id, room_id, content, post_type):
+        def new_tictactoe_message(self, latest_post, post_id, room_id, content, post_type, username):
             """
             Posts a new tictactoe board as a reply to the latest message in the current room
             """
             Digibutter.tictactoe.values = [f'{" ":<2}' for x in range(9)]
             Digibutter.tictactoe.tictactoe_board = "            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n______ |_______| ______\n            |            |            \n     %s     |     %s     |     %s     \n            |            |            " % (Digibutter.tictactoe.values[0], Digibutter.tictactoe.values[1], Digibutter.tictactoe.values[2], Digibutter.tictactoe.values[3], Digibutter.tictactoe.values[4], Digibutter.tictactoe.values[5], Digibutter.tictactoe.values[6], Digibutter.tictactoe.values[7], Digibutter.tictactoe.values[8])
-            Digibutter.tictactoe.player = latest_post['user']['name']
+            Digibutter.tictactoe.player = username
             Digibutter.tictactoe.turn = 1
             first_player = random.choice([Digibutter.tictactoe.player, "NerrBot: ReHatched"])
             if first_player == Digibutter.tictactoe.player:
@@ -965,11 +1012,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def display_ticactoe_message(self, latest_post, id, room_id, content, post_type):
+        def display_ticactoe_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the current tictactoe board as a reply to the latest message in the current room
             """
@@ -983,11 +1030,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def tictactoe_help_message(self, latest_post, id, room_id, content, post_type):
+        def tictactoe_help_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the arguments within the tictactoe command as a reply to the latest message in the current room
             """
@@ -998,11 +1045,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def specify_tictactoe_message(self, latest_post, id, room_id, content, post_type):
+        def specify_tictactoe_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Asks for an argument for the tictactoe command when not previously specified as a reply to the latest message in the current room
             """
@@ -1013,11 +1060,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def default_flip_message(self, latest_post, id, room_id, content, post_type):
+        def default_flip_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the default coin flip message as a reply to the latest message in the current room
             """
@@ -1028,11 +1075,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def custom_flip_message(self, latest_post, id, room_id, content, post_type):
+        def custom_flip_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the custom coin flip message as a reply to the latest message in the current room
             """
@@ -1040,10 +1087,10 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 number_of_coin_flips = int(content[9:])    
             except ValueError:
                 number_of_coin_flips = content[9:]
-                Digibutter.responses.NaN_error_message(Digibutter, latest_post, id, room_id, content, post_type, number_of_coin_flips)
+                Digibutter.responses.NaN_error_message(Digibutter, latest_post, post_id, room_id, content, post_type, number_of_coin_flips)
                 return None
             if number_of_coin_flips > 1000000:
-                Digibutter.responses.number_too_large_message(Digibutter, latest_post, id, room_id, content, post_type, number_of_coin_flips)
+                Digibutter.responses.number_too_large_message(Digibutter, latest_post, post_id, room_id, content, post_type, number_of_coin_flips)
                 return None
             heads = 0
             tails = 0
@@ -1060,11 +1107,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def number_too_large_message(self, latest_post, id, room_id, content, post_type, number_of_coin_flips):
+        def number_too_large_message(self, latest_post, post_id, room_id, content, post_type, number_of_coin_flips):
             reply_text = f"{number_of_coin_flips} is too large of a number. Please use only numbers up to 1000000 for coin flips."
             if '"reply_to":{"replies":' in latest_post:
                 type = "reply"
@@ -1072,11 +1119,11 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def NaN_error_message(Digibutter, latest_post, id, room_id, content, post_type, max_value, number_of_coin_flips):
+        def NaN_error_message(self, latest_post, post_id, room_id, content, post_type, max_value, number_of_coin_flips):
             """
             Posts a NaN error message as a reply to the latest topic in the current room
             """
@@ -1087,11 +1134,60 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def not_recognized_message(self, latest_post, id, room_id, content, post_type):
+        def autolike_start_message(self, latest_post, post_id, room_id, content, post_type, username):
+            """
+            When the autolike_start command is received from a NerrBot: ReHatched admin, NB:RH will post this message in response and begin liking every message the specified user posts until the autolike_stop command is sent by a NB:RH admin.
+            """
+            with open("users.json", "r") as user_records:
+                data = json.load(user_records)
+            for user in data['users']:
+                if user['username'] == content[19:]:
+                    user_id = user['user_id']
+                    with open("autolike_users.json", "r") as autolike_users:
+                        data = json.load(autolike_users)
+                    for user in data['users']:
+                        if user_id == user['user_id']:
+                            reply_text = f"**{username}** is a valid NerrBot: ReHatched admin, but **{content[19:]}** _already has autolike enabled_. Congratulations. You just wasted NerrBot: ReHatched's time."
+                            break
+                    else:
+                        user = {"username": content[19:], "user_id": user_id}
+                        data['users'].append(user)
+                        write_json(data, filename="autolike_users.json")
+                        logging.warning(f"The autolike feature has been enabled for user_id {user_id} with the username {content[19:]} by {username}.")
+                        reply_text = f"**{username}** is a valid NerrBot: ReHatched admin, and **{content[19:]}** is a valid user. Enabling the autolike feature for user **{content[19:]}** ..."
+                    break
+            else:
+                reply_text = f"**{username}** is a valid NerrBot: ReHatched admin, but **{content[19:]}** is _not a valid user_. Congratulations. You just wasted NerrBot: ReHatched's time."
+            if '"reply_to":{"replies":' in latest_post:
+                type = "reply"
+            else:
+                type = "post"
+            logging.info('Replying to %s with content: "%s"' % (type, content))
+            print('\n> Replying to %s with content: "%s"' % (type, content))
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
+
+        def autolike_stop_message():
+            pass
+
+        def autolike_invalid_message():
+            pass
+
+        def autolike_help_message():
+            pass
+
+        def autodislike_vote_add_message():
+            pass
+
+        def autodislike_vote_remove_message():
+            pass
+
+        def not_recognized_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the command not recognized message as a reply to the latest message in the current room
             """
@@ -1102,7 +1198,7 @@ or content[9:] == "Doo_liss" or content[9:] == "Spammers" or content[9:] == "Twi
                 type = "post"
             logging.info('Replying to %s with content: "%s"' % (type, content))
             print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
