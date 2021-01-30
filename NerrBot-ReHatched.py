@@ -181,6 +181,12 @@ class Digibutter(BaseNamespace):
         logging.info('"NerrChat" index successfully parsed')
         print('\n> "NerrChat" index successfully parsed')
         Digibutter.record_user(Digibutter, username, user_id)
+        with open("autolike_users.json", "r") as autolike_users:
+            data = json.load(autolike_users)
+        for user in data['users']:
+            if user['user_id'] == user_id:
+                sio.emit("posts:like", {"like":1,"post_id":f"{post_id}"})
+                break
         Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_new_post(self):
