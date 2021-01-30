@@ -50,7 +50,7 @@ def write_json(data, filename):
         json.dump(data, f, indent=4)
 
 # Logging Configuration
-logging.basicConfig(format = "%(asctime)s: %(levelname)s: %(name)s: %(message)s", datefmt='%m/%d/%Y %H:%M:%S', filename='NerrBot RH.log', filemode='w', level = logging.DEBUG)
+logging.basicConfig(format = "%(asctime)s: %(levelname)s: %(name)s: %(message)s", datefmt='%m/%d/%Y %H:%M:%S', filename='NerrBot-ReHatched.log', filemode='w', level = logging.DEBUG)
 
 class Digibutter(BaseNamespace):
     # Define Class Variables
