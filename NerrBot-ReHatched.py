@@ -99,7 +99,7 @@ class Digibutter(BaseNamespace):
         sio.wait(.2)
         sio.emit("posts:chats", {"room": "sidebar"}, Digibutter.on_NerrChat_chatlog_response)
         sio.wait(.2)
-        sio.emit("posts:create", {"content":"I disconnected unexpectedly there, sorry!","post_type":"","roomId":"sidebar","source":"db"})
+        # DISABLED - sio.emit("posts:create", {"content":"I disconnected unexpectedly there, sorry!","post_type":"","roomId":"sidebar","source":"db"})
 
     def on_all_posts_index_response(self):
         print('\n> Received posts index for room "All Posts"')
@@ -441,15 +441,15 @@ class Digibutter(BaseNamespace):
             elif content[0:12] == "!rh autolike":
                 if content[13:] == "help":
                     Digibutter.responses.autolike_help_message(Digibutter, latest_post, post_id, room_id, content, post_type)
-                # DISABLED - elif user_id == "5b6d7f666bc987d3195169e9":
-                elif content[13:18] == "start":
-                    Digibutter.responses.autolike_start_message(Digibutter, latest_post, post_id, room_id, content, post_type, username)
-                elif content[13:17] == "stop":
-                    Digibutter.responses.autolike_stop_message(Digibutter, latest_post, post_id, room_id, content, post_type, username)
+                elif user_id == "5b6d7f666bc987d3195169e9":
+                    if content[13:18] == "start":
+                        Digibutter.responses.autolike_start_message(Digibutter, latest_post, post_id, room_id, content, post_type, username)
+                    elif content[13:17] == "stop":
+                        Digibutter.responses.autolike_stop_message(Digibutter, latest_post, post_id, room_id, content, post_type, username)
+                    else:
+                        Digibutter.responses.not_recognized_message
                 else:
-                    Digibutter.responses.not_recognized_message
-                # else:
-                    # DISABLED - Digibutter.responses.autolike_invalid_message(Digibutter, latest_post, post_id, room_id, content, post_type, username)
+                    Digibutter.responses.autolike_invalid_message(Digibutter, latest_post, post_id, room_id, content, post_type, username)
             elif content[0:] == "!rh autodislike":
                 pass
             else:
