@@ -1,7 +1,7 @@
 import colorama
 colorama.init()
 
-version = "1.2.0 alpha 1"
+version = "1.2.1"
 
 print(colorama.Fore.GREEN + f"===================================================NerrBot: RH v{version}===================================================" + colorama.Fore.LIGHTBLUE_EX + """
 
@@ -111,7 +111,7 @@ class Digibutter(BaseNamespace):
         content = all_posts_index['posts'][0]['content']
         post_type = ''
         username = all_posts_index['posts'][0]['user']['name']
-        user_id = all_posts_index['posts'][0]['user']['id']
+        user_id = all_posts_index['posts'][0]['user']['id'] or all_posts_index['posts'][0]['user']['anon']
         logging.info('"All Posts" index successfully parsed')
         print('\n> "All Posts" index successfully parsed')
         Digibutter.record_user(Digibutter, username, user_id)
@@ -133,7 +133,7 @@ class Digibutter(BaseNamespace):
         content = gaming_news_index['posts'][0]['content']
         post_type = ''
         username = gaming_news_index['posts'][0]['user']['name']
-        user_id = gaming_news_index['posts'][0]['user']['id']
+        user_id = gaming_news_index['posts'][0]['user']['id'] or gaming_news_index['posts'][0]['user']['anon']
         logging.info('"Gaming News" index successfully parsed')
         print('\n> "Gaming News" index successfully parsed')
         Digibutter.record_user(Digibutter, username, user_id)
@@ -155,7 +155,7 @@ class Digibutter(BaseNamespace):
         content = the_dump_index['posts'][0]['content']
         post_type = ''
         username = the_dump_index['posts'][0]['user']['name']
-        user_id = the_dump_index['posts'][0]['user']['id']
+        user_id = the_dump_index['posts'][0]['user']['id'] or the_dump_index['posts'][0]['user']['anon']
         logging.info('"The Dump" index successfully parsed')
         print('\n> "The Dump" index successfully parsed')
         Digibutter.record_user(Digibutter, username, user_id)
@@ -177,7 +177,7 @@ class Digibutter(BaseNamespace):
         content = NerrChat_index['posts'][0]['content']
         post_type = 'chat'
         username = NerrChat_index['posts'][0]['user']['name']
-        user_id = NerrChat_index['posts'][0]['user']['id']
+        user_id = NerrChat_index['posts'][0]['user']['id'] or NerrChat_index['posts'][0]['user']['anon']
         logging.info('"NerrChat" index successfully parsed')
         print('\n> "NerrChat" index successfully parsed')
         Digibutter.record_user(Digibutter, username, user_id)
@@ -201,7 +201,7 @@ class Digibutter(BaseNamespace):
         content = latest_post['content']
         post_type = latest_post['post_type']
         username = latest_post['user']['name']
-        user_id = latest_post['user']['id']
+        user_id = latest_post['user']['id'] or latest_post['user']['anon']
         if post_type == "like1":
             original_post_content = latest_post['reply_to']['content']
             original_poster = latest_post['reply_to']['user']['name']
