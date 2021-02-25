@@ -1,7 +1,7 @@
 import colorama
 colorama.init()
 
-version = "1.2.1"
+version = "1.2.0 beta"
 
 print(colorama.Fore.GREEN + f"===================================================NerrBot: RH v{version}===================================================" + colorama.Fore.LIGHTBLUE_EX + """
 
