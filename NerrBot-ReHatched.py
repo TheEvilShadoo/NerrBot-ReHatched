@@ -672,7 +672,7 @@ class Digibutter(BaseNamespace):
                 elif content[10:] == "Do you know everything?":
                     reply_text = '''"/I don't know everything. I only know what I know./"'''
                 elif content[10:] == "Is this madness?":
-                    reply_text = "This is **DIGIBUTTER**."
+                    reply_text = "This is **DIGIBUTTER**"
                 else:
                     reply_text = "%s" % random.choice(["Yes", "No"])
             else:
