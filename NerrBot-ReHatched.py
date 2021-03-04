@@ -1,7 +1,7 @@
 import colorama
 colorama.init()
 
-version = "1.2.0 beta 2"
+version = "1.2.0 beta 3"
 
 print(colorama.Fore.GREEN + f"===================================================NerrBot: RH v{version}===================================================" + colorama.Fore.LIGHTBLUE_EX + """
 
@@ -115,6 +115,7 @@ class Digibutter(BaseNamespace):
             user_id = all_posts_index['posts'][0]['user']['id']
         except:
             user_id = all_posts_index['posts'][0]['user']['anon']
+            username.append(" (anon)")
         logging.info('"All Posts" index successfully parsed')
         print('\n> "All Posts" index successfully parsed')
         Digibutter.record_user(Digibutter, username, user_id)
@@ -140,6 +141,7 @@ class Digibutter(BaseNamespace):
             user_id = gaming_news_index['posts'][0]['user']['id']
         except:
             user_id = gaming_news_index['posts'][0]['user']['anon']
+            username.append(" (anon)")
         logging.info('"Gaming News" index successfully parsed')
         print('\n> "Gaming News" index successfully parsed')
         Digibutter.record_user(Digibutter, username, user_id)
@@ -165,6 +167,7 @@ class Digibutter(BaseNamespace):
             user_id = the_dump_index['posts'][0]['user']['id']
         except:
             user_id = the_dump_index['posts'][0]['user']['anon']
+            username.append(" (anon)")
         logging.info('"The Dump" index successfully parsed')
         print('\n> "The Dump" index successfully parsed')
         Digibutter.record_user(Digibutter, username, user_id)
@@ -190,6 +193,7 @@ class Digibutter(BaseNamespace):
             user_id = NerrChat_index['posts'][0]['user']['id']
         except:
             user_id = NerrChat_index['posts'][0]['user']['anon']
+            username.append(" (anon)")
         logging.info('"NerrChat" index successfully parsed')
         print('\n> "NerrChat" index successfully parsed')
         Digibutter.record_user(Digibutter, username, user_id)
@@ -217,17 +221,18 @@ class Digibutter(BaseNamespace):
             user_id = latest_post['user']['id']
         except:
             user_id = latest_post['user']['anon']
+            username.append(" (anon)")
         if post_type == "like1":
             original_post_content = latest_post['reply_to']['content']
             original_poster = latest_post['reply_to']['user']['name']
-            logging.info(f"{username} liked {original_poster}'s latest post")
-            print(f"\n> {username} liked {original_poster}'s latest post")
+            logging.info(f"{username} liked {original_poster}'s post:\n{original_post_content}")
+            print(f"\n> {username} liked {original_poster}'s post:\n{original_post_content}")
             Digibutter.record_user(Digibutter, username, user_id)
         elif post_type == "like2":
             original_post_content = latest_post['reply_to']['content']
             original_poster = latest_post['reply_to']['user']['name']
-            logging.info(f"{username} disliked {original_poster}'s latest post")
-            print(f"\n> {username} disliked {original_poster}'s latest post")
+            logging.info(f"{username} disliked {original_poster}'s post:\n{original_post_content}")
+            print(f"\n> {username} disliked {original_poster}'s post:\n{original_post_content}")
             Digibutter.record_user(Digibutter, username, user_id)
         else:
             logging.info('Received a new post: ' + content)
@@ -437,7 +442,7 @@ class Digibutter(BaseNamespace):
                 if content == "!rh tictactoe":
                     Digibutter.responses.specify_tictactoe_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh tictactoe new":
-                    Digibutter.responses.new_tictactoe_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                    Digibutter.responses.new_tictactoe_message(Digibutter, latest_post, post_id, room_id, content, post_type, username)
                 elif content == "!rh tictactoe display":
                     Digibutter.responses.display_ticactoe_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh tictactoe help":
@@ -687,7 +692,7 @@ class Digibutter(BaseNamespace):
                 elif content[10:] == "Do you know everything?":
                     reply_text = '''"/I don't know everything. I only know what I know./"'''
                 elif content[10:] == "Is this madness?":
-                    reply_text = "This is **DIGIBUTTER**"
+                    reply_text = "This is **DIGIBUTTER**."
                 else:
                     reply_text = "%s" % random.choice(["Yes", "No"])
             else:
