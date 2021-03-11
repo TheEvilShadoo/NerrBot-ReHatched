@@ -115,7 +115,7 @@ class Digibutter(BaseNamespace):
             user_id = all_posts_index['posts'][0]['user']['id']
         except:
             user_id = all_posts_index['posts'][0]['user']['anon']
-            username.append(" (anon)")
+            username += " (anon)"
         logging.info('"All Posts" index successfully parsed')
         print('\n> "All Posts" index successfully parsed')
         Digibutter.record_user(Digibutter, username, user_id)
@@ -141,7 +141,7 @@ class Digibutter(BaseNamespace):
             user_id = gaming_news_index['posts'][0]['user']['id']
         except:
             user_id = gaming_news_index['posts'][0]['user']['anon']
-            username.append(" (anon)")
+            username += " (anon)"
         logging.info('"Gaming News" index successfully parsed')
         print('\n> "Gaming News" index successfully parsed')
         Digibutter.record_user(Digibutter, username, user_id)
@@ -167,7 +167,7 @@ class Digibutter(BaseNamespace):
             user_id = the_dump_index['posts'][0]['user']['id']
         except:
             user_id = the_dump_index['posts'][0]['user']['anon']
-            username.append(" (anon)")
+            username += " (anon)"
         logging.info('"The Dump" index successfully parsed')
         print('\n> "The Dump" index successfully parsed')
         Digibutter.record_user(Digibutter, username, user_id)
@@ -193,7 +193,7 @@ class Digibutter(BaseNamespace):
             user_id = NerrChat_index['posts'][0]['user']['id']
         except:
             user_id = NerrChat_index['posts'][0]['user']['anon']
-            username.append(" (anon)")
+            username += " (anon)"
         logging.info('"NerrChat" index successfully parsed')
         print('\n> "NerrChat" index successfully parsed')
         Digibutter.record_user(Digibutter, username, user_id)
@@ -221,7 +221,7 @@ class Digibutter(BaseNamespace):
             user_id = latest_post['user']['id']
         except:
             user_id = latest_post['user']['anon']
-            username.append(" (anon)")
+            username += " (anon)"
         if post_type == "like1":
             original_post_content = latest_post['reply_to']['content']
             original_poster = latest_post['reply_to']['user']['name']
