@@ -1,12 +1,12 @@
 import colorama
 colorama.init()
 
-version = "1.2.0"
+version = "1.2.1"
 
 print(colorama.Fore.GREEN + f"====================================================NerrBot: RH v{version}====================================================" + colorama.Fore.LIGHTBLUE_EX + """
 
 
-                                    _______________________________________________ 
+                                    _______________________________________________
                                    |____________________       ____________________|
                                    |   ______________   |     |   ______________   |
                                    |  |   ________   |  |_____|  |   ________   |  |
@@ -25,10 +25,10 @@ print(colorama.Fore.GREEN + f"==================================================
                                    |_______________________________________________|""" + colorama.Fore.LIGHTCYAN_EX + """
 
 
-  _   _                ____        _       ____  _   _   ___       ____                    _                         
- | \ | | ___ _ __ _ __| __ )  ___ | |_ _  |  _ \| | | | |_ _|___  |  _ \ _   _ _ __  _ __ (_)_ __   __ _             
- |  \| |/ _ \ '__| '__|  _ \ / _ \| __(_) | |_) | |_| |  | |/ __| | |_) | | | | '_ \| '_ \| | '_ \ / _` |            
- | |\  |  __/ |  | |  | |_) | (_) | |_ _  |  _ <|  _  |  | |\__ \ |  _ <| |_| | | | | | | | | | | | (_| |  _   _   _ 
+  _   _                ____        _       ____  _   _   ___       ____                    _
+ | \ | | ___ _ __ _ __| __ )  ___ | |_ _  |  _ \| | | | |_ _|___  |  _ \ _   _ _ __  _ __ (_)_ __   __ _
+ |  \| |/ _ \ '__| '__|  _ \ / _ \| __(_) | |_) | |_| |  | |/ __| | |_) | | | | '_ \| '_ \| | '_ \ / _` |
+ | |\  |  __/ |  | |  | |_) | (_) | |_ _  |  _ <|  _  |  | |\__ \ |  _ <| |_| | | | | | | | | | | | (_| |  _   _   _
  |_| \_|\___|_|  |_|  |____/ \___/ \__(_) |_| \_\_| |_| |___|___/ |_| \_\\\__,_|_| |_|_| |_|_|_| |_|\__, | (_) (_) (_)
                                                                                                    |___/             """ + colorama.Fore.RESET)
 
@@ -310,7 +310,7 @@ class Digibutter(BaseNamespace):
                     open_edges.append(x)
             if len(open_edges) > 0:
                 move = random.choice(open_edges)
-                
+
             return move
 
         def is_winner(self, values, symbol):
@@ -537,7 +537,7 @@ class Digibutter(BaseNamespace):
             sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
-            
+
         def help_echo_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the echo command as a reply to the latest topic in the current room
@@ -752,8 +752,7 @@ class Digibutter(BaseNamespace):
             """
             min_value = 1
             try:
-                int(content[9:])
-                max_value = content[9:]
+                max_value = int(content[9:])
             except ValueError:
                 max_value = content[9:]
                 reply_text = f"'{max_value}' is not a number."
@@ -863,7 +862,7 @@ class Digibutter(BaseNamespace):
             Posts the current date and time for the specified timezone as a reply to the latest message in the current room
             """
             timezone = content[9:12]
-            try: 
+            try:
                 reply_text = "The current date and time is: %s" % datetime.datetime.now(tz=pytz.timezone(f"{timezone}")).strftime(f"%a %B %#d, %Y at %#I:%M:%S %p {timezone}")
             except:
                 reply_text = f"'{timezone}' is not a valid timezone."
@@ -1071,8 +1070,7 @@ class Digibutter(BaseNamespace):
             Posts the custom coin flip message as a reply to the latest message in the current room
             """
             try:
-                int(content[9:])
-                number_of_coin_flips = content[9:]
+                number_of_coin_flips = int(content[9:])
             except ValueError:
                 number_of_coin_flips = content[9:]
                 reply_text = f"'{number_of_coin_flips}' is not a number."
