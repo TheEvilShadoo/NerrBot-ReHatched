@@ -1,7 +1,7 @@
 import colorama
 colorama.init()
 
-version = "1.2.1"
+version = "1.2.2"
 
 print(colorama.Fore.GREEN + f"====================================================NerrBot: RH v{version}====================================================" + colorama.Fore.LIGHTBLUE_EX + """
 
@@ -401,9 +401,9 @@ class Digibutter(BaseNamespace):
                     Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:8] == "!rh time":
                 if content == "!rh time":
-                    Digibutter.responses.UTC_time_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                    Digibutter.responses.time_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content[0:9] == "!rh time ":
-                    Digibutter.responses.custom_time_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                    Digibutter.responses.time_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 else:
                     Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:13] == "!rh tictactoe":
@@ -842,26 +842,14 @@ class Digibutter(BaseNamespace):
             logging.info("Message was sent successfully")
             print("\n> Message was sent successfully")
 
-        def UTC_time_message(self, latest_post, post_id, room_id, content, post_type):
+        def time_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the current date and time in UTC as a reply to the latest message in the current room
+            Posts the current date and time in UTC (or optionally specify a timezone) as a reply to the latest message in the current room
             """
-            reply_text = "The current date and time is: %s" % datetime.datetime.utcnow().strftime("%a %B %#d, %Y at %H:%M:%S UTC")
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
-
-        def custom_time_message(self, latest_post, post_id, room_id, content, post_type):
-            """
-            Posts the current date and time for the specified timezone as a reply to the latest message in the current room
-            """
-            timezone = content[9:12]
+            try:
+                timezone = content[9:12]
+            except:
+                timezone = "UTC"
             try:
                 reply_text = "The current date and time is: %s" % datetime.datetime.now(tz=pytz.timezone(f"{timezone}")).strftime(f"%a %B %#d, %Y at %#I:%M:%S %p {timezone}")
             except:
