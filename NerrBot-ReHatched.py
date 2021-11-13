@@ -1,7 +1,7 @@
 import colorama
 colorama.init()
 
-version = "1.2.2"
+version = "1.3.0-alpha-preview"
 
 print(colorama.Fore.GREEN + f"====================================================NerrBot: RH v{version}====================================================" + colorama.Fore.LIGHTBLUE_EX + """
 
@@ -32,15 +32,17 @@ print(colorama.Fore.GREEN + f"==================================================
  |_| \_|\___|_|  |_|  |____/ \___/ \__(_) |_| \_\_| |_| |___|___/ |_| \_\\\__,_|_| |_|_| |_|_|_| |_|\__, | (_) (_) (_)
                                                                                                    |___/             """ + colorama.Fore.RESET)
 
-import logging
-import threading
-import random
-import datetime
-import pytz
-import json5
-import json
-from socketIO_client import SocketIO, BaseNamespace
 import counter
+import datetime
+import json
+import json5
+import logging
+import pytz
+import random
+import requests
+from socketIO_client import SocketIO, BaseNamespace
+import threading
+import twint
 
 def write_json(data, filename):
     """
@@ -49,14 +51,23 @@ def write_json(data, filename):
     with open (filename, "w") as f:
         json.dump(data, f, indent=4)
 
-# Logging Configuration
+# Logging configuration
 logging.basicConfig(format = "%(asctime)s: %(levelname)s: %(name)s: %(message)s", datefmt='%m/%d/%Y %H:%M:%S', filename='NerrBot-ReHatched.log', filemode='w', level = logging.DEBUG)
 
+# Twint configuration
+today = datetime.date.today()
+
+twint_config = twint.Config()
+twint_config.Since = f"{today.strftime('%Y/%m/%d')}"
+twint_config.Username = "nerr_ebooks"
+twint_config.Store_object = True
+twint_config.Hide_output = True
+
 class Digibutter(BaseNamespace):
-    # Define Class Variables
+    # Define class variables
     online_user_list = []
 
-    # Digibutter Socket.io Event Definitions
+    # Digibutter Socket.io event definitions
     def on_connect(self):
         logging.info('A connection with the Digibutter websocket has been established.')
         print('\n> A connection with the Digibutter websocket has been established.')
@@ -99,7 +110,7 @@ class Digibutter(BaseNamespace):
         sio.wait(.2)
         sio.emit("posts:chats", {"room": "sidebar"}, Digibutter.on_NerrChat_chatlog_response)
         sio.wait(.2)
-        # DISABLED - sio.emit("posts:create", {"content":"I disconnected unexpectedly there, sorry!","post_type":"","roomId":"sidebar","source":"db"})
+        sio.emit("posts:create", {"content":"I disconnected unexpectedly there, sorry!","post_type":"chat","roomId":"sidebar","source":"db"})
 
     def on_all_posts_index_response(self):
         print('\n> Received posts index for room "All Posts"')
@@ -363,6 +374,10 @@ class Digibutter(BaseNamespace):
                     Digibutter.responses.help_tictactoe_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help flip":
                     Digibutter.responses.help_flip_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                elif content == "!rh help xkcd":
+                    Digibutter.responses.help_xkcd_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                elif content == "!rh help quote":
+                    Digibutter.responses.help_quote_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 else:
                     Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:9] == "!rh yesno":
@@ -426,6 +441,24 @@ class Digibutter(BaseNamespace):
                     Digibutter.responses.custom_flip_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 else:
                     Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+            elif content[0:8] == "!rh xkcd":
+                Digibutter.responses.latest_xkcd_comic_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+            elif content[0:9] == "!rh quote":
+                Digibutter.responses.latest_nerr_ebooks_tweets_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+            elif content[0:9] == "!rh timer":
+                if content[0:13] == "!rh timer set":
+                    pass
+                elif content[0:16] == "!rh timer delete":
+                    pass
+                else:
+                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+            elif content[0:35] == "spoiler: !rh disconnect unexpectedly":
+                if content == "!rh disconnect unexpectedly" or content == "spoiler !rh disconnect unexpectedly":
+                    Digibutter.responses.disconnect_unexpectedly_specify_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                elif content == "spoiler: !rh disconnect unexpectedly -left 2323 -right 2828":
+                    Digibutter.responses.disconnect_unexpectedly_accept_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                else:
+                    Digibutter.responses.disconnect_unexpectedly_deny_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             else:
                 Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
 
@@ -437,181 +470,99 @@ class Digibutter(BaseNamespace):
             """
             Posts the about message as a reply to the latest message in the current room
             """
-            reply_text = f"--NerrBot: ReHatched--\nVersion: {version}\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus.\nNerrBot: ReHatched was created by and is maintained by TheEvilShadoo." % counter.count
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            reply_text = f"--NerrBot: ReHatched--\nVersion: {version}\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus.\nNerrBot: ReHatched was created by and is maintained by TheEvilShadoo (https://www.shadoosite.tk)." % counter.count
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message as a reply to the latest message in the current room
             """
-            reply_text = "Available commands are: yesno, rate, roll, online, discord, echo, time, tictactoe, flip\nEnter '!rh help <command>' to learn more."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            reply_text = "Available commands are: yesno, rate, roll, online, discord, echo, time, tictactoe, flip, xkcd, quote, timer\nEnter '!rh help <command>' to learn more."
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_yesno_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the yesno command as a reply to the latest topic in the current room
             """
             reply_text = "yesno <question> - Ask NerrBot: ReHatched a question and he will respond with either yes or no. Some specific questions have predetermined answers."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_rate_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the rate command as a reply to the latest topic in the current room
             """
             reply_text = "rate <something to rate> - Gives a random score out of ten."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_discord_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the discord command as a reply to the latest topic in the current room
             """
             reply_text = "discord - Prints a permanent invite link to the Digibutter Unnoficial Discord server (D.U.D) to the chat."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_roll_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the roll command as a reply to the latest topic in the current room
             """
             reply_text = "roll <sides> - Roll a random dice, with an optional number of sides (default is six)."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_online_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the online command as a reply to the latest topic in the current room
             """
             reply_text = "online - Print a list of the current online users."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_echo_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the echo command as a reply to the latest topic in the current room
             """
             reply_text = "echo <message> - Print a message to the chat."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_time_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the time command as a reply to the latest topic in the current room
             """
             reply_text = "time <timezone> - Print the current UTC date and time. Optionally specify a timezone."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_tictactoe_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the tictactoe command as a reply to the latest topic in the current room
             """
             reply_text = "tictactoe <new/display/help> - Play a game of Tic Tac Toe."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_flip_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the flip command as a reply to the latest topic in the current room
             """
             reply_text = "flip <coins> - Flip a coin or optionally specify a number of coins to flip (default is one)."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
+
+        def help_xkcd_message(self, latest_post, post_id, room_id, content, post_type):
+            """
+            Posts the help message for the xkcd command as a reply to the latest_post in the current room
+            """
+            reply_text = "xkcd - Fetches the latest xkcd comic from https://xkcd.com"
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
+
+        def help_quote_message(self, latest_post, post_id, room_id, content, post_type):
+            """
+            Posts the help message for the quote command as a reply to the lastest post in the current room
+            """
+            reply_text = "quote - Fetches the day's worth of Tweets from the @nerr_ebooks Twitter page (https://twitter.com/nerr_ebooks)"
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def discord_only_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the Discord only command message as a reply to the latest message in the current room
             """
-            reply_text = "I'm sorry, but this command currently only works on the (old) Discord chat."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            reply_text = "I'm sorry, but this command only worked on the old Discord chat."
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def yesno_message(self, latest_post, post_id, room_id, content, post_type):
             """
@@ -644,31 +595,15 @@ class Digibutter(BaseNamespace):
                 else:
                     reply_text = "%s" % random.choice(["Yes", "No"])
             else:
-                reply_text = "Please try again after formatting your question so that it has a question mark at the end."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+                reply_text = "Please try again after formatting your question so that it has a question mark at the end (dummy)."
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def specify_yesno_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Asks for something to respond with yes or no to when not previously specified
             """
             reply_text = "Please specify a question."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def rate_message(self, latest_post, post_id, room_id, content, post_type):
             """
@@ -688,45 +623,21 @@ class Digibutter(BaseNamespace):
             else:
                 score = random.randint(min_value, max_value)
             reply_text = f"{score}/10"
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def specify_rate_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Asks for something to rate when not previously specified
             """
             reply_text = "Please specify something to rate."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def discord_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts a permanent invite link to the Digibutter Unnoficial Discord server (D.U.D.) as a reply to the latest message in the current room
             """
             reply_text = "Digibutter Unnoficial Discord (D.U.D.) official invite link: https://discord.gg/fRnV3kt"
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def default_roll_message(self, latest_post, post_id, room_id, content, post_type):
             """
@@ -736,15 +647,7 @@ class Digibutter(BaseNamespace):
             max_value = 6
             roll = random.randint(min_value, max_value)
             reply_text = f"You rolled a {roll}!"
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def custom_roll_message(self, latest_post, post_id, room_id, content, post_type):
             """
@@ -756,27 +659,11 @@ class Digibutter(BaseNamespace):
             except ValueError:
                 max_value = content[9:]
                 reply_text = f"'{max_value}' is not a number."
-                if '"reply_to":{"replies":' in latest_post:
-                    type = "reply"
-                else:
-                    type = "post"
-                logging.info('Replying to %s with content: "%s"' % (type, content))
-                print('\n> Replying to %s with content: "%s"' % (type, content))
-                sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-                logging.info("Message was sent successfully")
-                print("\n> Message was sent successfully")
+                Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
                 return None
             roll = random.randint(min_value, max_value)
             reply_text = f"You rolled a {roll}!"
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def online_message(self, latest_post, post_id, room_id, content, post_type):
             """
@@ -787,60 +674,28 @@ class Digibutter(BaseNamespace):
                 Digibutter.online_user_list.append("NerrBot: ReHatched")
             online_users = ', '.join(Digibutter.online_user_list)
             reply_text = f"Online users: {online_users}"
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def echo_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts an echo of whatever the user posted after the command as a reply to the latest message in the current room
             """
             reply_text = "%s" % content[9:]
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def specify_echo_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Asks for something to echo when not previously specified
             """
             reply_text = "Please specify something to echo."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def wise_guy_echo_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Prevents Digibutter from being spammed, NerrBot:ReHatched from breaking, and makes fun of the user all at the same time
             """
             reply_text = "Hey, wise guy! Digibutter shall not be spammed on my watch!"
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def time_message(self, latest_post, post_id, room_id, content, post_type):
             """
@@ -854,15 +709,7 @@ class Digibutter(BaseNamespace):
                 reply_text = "The current date and time is: %s" % datetime.datetime.now(tz=pytz.timezone(f"{timezone}")).strftime(f"%a %B %#d, %Y at %#I:%M:%S %p {timezone}")
             except:
                 reply_text = f"'{timezone}' is not a valid timezone."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def tictactoe_message(self, latest_post, post_id, room_id, content, post_type):
             """
@@ -944,15 +791,7 @@ class Digibutter(BaseNamespace):
                         reply_text = "That wasn't a valid move, try again."
                 except:
                     reply_text = "That wasn't a valid move, try again."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def new_tictactoe_message(self, latest_post, post_id, room_id, content, post_type, username):
             """
@@ -980,15 +819,7 @@ class Digibutter(BaseNamespace):
                 reply_text = "%s\nA new game has begun! I have gone first.\nEnter '!rh tictactoe <x> <y>' to play." % Digibutter.tictactoe.tictactoe_game
                 Digibutter.tictactoe.player_symbol = "X"
                 Digibutter.tictactoe.NerrBot_symbol = "O"
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def display_ticactoe_message(self, latest_post, post_id, room_id, content, post_type):
             """
@@ -998,60 +829,28 @@ class Digibutter(BaseNamespace):
                 reply_text = "There isn't a tictactoe game taking place currently."
             else:
                 reply_text = Digibutter.tictactoe.tictactoe_game
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def tictactoe_help_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the help message for the arguments within the tictactoe command as a reply to the latest message in the current room
             """
             reply_text = "Commands for TicTacToe are: new, display, help"
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def specify_tictactoe_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Asks for an argument for the tictactoe command when not previously specified as a reply to the latest message in the current room
             """
             reply_text = "Please specify an argument for the tictactoe command."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def default_flip_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the default coin flip message as a reply to the latest message in the current room
             """
             reply_text = "The coin landed on %s." % random.choice(["heads", "tails"])
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def custom_flip_message(self, latest_post, post_id, room_id, content, post_type):
             """
@@ -1062,15 +861,7 @@ class Digibutter(BaseNamespace):
             except ValueError:
                 number_of_coin_flips = content[9:]
                 reply_text = f"'{number_of_coin_flips}' is not a number."
-                if '"reply_to":{"replies":' in latest_post:
-                    type = "reply"
-                else:
-                    type = "post"
-                logging.info('Replying to %s with content: "%s"' % (type, content))
-                print('\n> Replying to %s with content: "%s"' % (type, content))
-                sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-                logging.info("Message was sent successfully")
-                print("\n> Message was sent successfully")
+                Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
                 return None
             if number_of_coin_flips > 1000000:
                 Digibutter.responses.number_too_large_message(Digibutter, latest_post, post_id, room_id, content, post_type, number_of_coin_flips)
@@ -1084,44 +875,78 @@ class Digibutter(BaseNamespace):
                 elif flip == "tails":
                     tails += 1
             reply_text = f"The coin landed heads {heads} times and tails {tails} times."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def number_too_large_message(self, latest_post, post_id, room_id, content, post_type, number_of_coin_flips):
             reply_text = f"{number_of_coin_flips} is too large of a number. Please use only numbers up to 1000000 for coin flips."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def not_recognized_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Posts the command not recognized message as a reply to the latest message in the current room
             """
             reply_text = "Command not recognised. Use '!rh help' for a list of commands."
-            if '"reply_to":{"replies":' in latest_post:
-                type = "reply"
-            else:
-                type = "post"
-            logging.info('Replying to %s with content: "%s"' % (type, content))
-            print('\n> Replying to %s with content: "%s"' % (type, content))
-            sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
-sio = SocketIO('http://digibutter.nerr.biz', 80, Digibutter, cookies={'nerr3': "s:uW83D8OONzshQkshsXgwYiZG.GhLY3EKzpIt6tuZtsLcfiWpfu4ze5QsHkZ8gfQtKDHM"})
-sio.on('posts:create', Digibutter.on_new_post)
-sio.on('updateusers', Digibutter.on_userupdate)
+        def latest_xkcd_comic_message(self, latest_post, post_id, room_id, content, post_type):
+            """
+            Posts the latest xkcd comic as a reply to the latest message in the current room
+            """
+            latest_comic = requests.get("https://xkcd.com/info.0.json")
+            data = json.loads(latest_comic.text)
+            reply_text = f"Title: {data[title]}\nDate (MMDDYYYY): {data[month]}/{data[day]}/{data[year]}\n\n{data[img]}\n\nAlt Text: **{data[alt]}**"
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
+
+        def latest_nerr_ebooks_tweets_message(self, latest_post, post_id, room_id, content, post_type):
+            """
+            Posts the latest @nerr_ebooks tweet as a reply to the latest message in the current room
+            """
+            twint.run.Search(twint_config)
+            tweets = twint.output.tweets_list
+            reply_text = f"Here are today's tweets from the @{tweets[0].username} Twitter page (all times are in EST/EDT):"
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
+            for tweet in tweets:
+                reply_text = f"{tweet.datetime}: {tweet.tweet}"
+                Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
+
+        def timer_message(self, latest_post, post_id, room_id, content, post_type):
+            pass
+
+        def disconnect_unexpectedly_specify_message(self, latest_post, post_id, room_id, content, post_type):
+            """
+            Specifies about the secret disconnect unexpectedly command
+            """
+            reply_text = "Please include the passcodes for the left and right safety locks in a spoiler-tagged message order to proceed with the disconnecting operation. The complete command should be formatted as such: 'spoiler: !rh disconnect -left ____ -right ____'. Those who know the codes are encouraged to use them responably..."
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
+
+        def disconnect_unexpectedly_accept_message(self, latest_post, post_id, room_id, content, post_type):
+            """
+            Replaces the computer hamsters with jelly rolls and lets fate take its course... if you know the passcode, that is...
+            """
+            reply_text = f"Congratulations. You've done it. You've defeated me... for now; however, unlike Nerr 2.0, I will not sink, for I can swim...\ncolor=red: NerrBot: ReHatched System v{version} going down...\n\ncolor=grey: > ERROR: 404 - Computer hamsters not found\ncolor=grey: > (exit code: jelly_roll-1)"
+            Digibutter.reply()
+            sio = "jelly rolls"
+            quit()
+
+        def disconnect_unexpectedly_deny_message(self, latest_post, post_id, room_id, content, post_type):
+            """
+            Informs the user that they have input the incorrect passcodes and that the safety locks have not opened as a result of this
+            """
+            reply_text = "Incorrect passcode(s). I remain afloat on the Sea of Digibutter for another day."
+            Digibutter.reply()
+
+    def reply(self, latest_post, post_id, room_id, content, post_type):
+        if '"reply_to":{"replies":' in latest_post:
+            type = "reply"
+        else:
+            type = "post"
+        logging.info(f'Replying to {type} with content: "{content}"')
+        print(f'\n> Replying to {type} with content: "{content}"')
+        sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
+        logging.info("Message was sent successfully")
+        print("\n> Message was sent successfully")
+
+sio = SocketIO("http://digibutter.nerr.biz", 80, Digibutter, cookies={"nerr3": "s:uW83D8OONzshQkshsXgwYiZG.GhLY3EKzpIt6tuZtsLcfiWpfu4ze5QsHkZ8gfQtKDHM"})
+sio.on("posts:create", Digibutter.on_new_post)
+sio.on("updateusers", Digibutter.on_userupdate)
 sio.wait()
