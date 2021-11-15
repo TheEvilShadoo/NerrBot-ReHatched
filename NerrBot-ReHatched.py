@@ -34,6 +34,7 @@ print(colorama.Fore.GREEN + f"==================================================
 
 import counter
 import datetime
+import fnmatch
 import json
 import json5
 import logging
@@ -41,8 +42,11 @@ import pytz
 import random
 import requests
 from socketIO_client import SocketIO, BaseNamespace
+import sys
 import threading
 import twint
+
+today = datetime.date.today()
 
 def write_json(data, filename):
     """
@@ -55,8 +59,6 @@ def write_json(data, filename):
 logging.basicConfig(format = "%(asctime)s: %(levelname)s: %(name)s: %(message)s", datefmt='%m/%d/%Y %H:%M:%S', filename='NerrBot-ReHatched.log', filemode='w', level = logging.DEBUG)
 
 # Twint configuration
-today = datetime.date.today()
-
 twint_config = twint.Config()
 twint_config.Since = f"{today.strftime('%Y/%m/%d')}"
 twint_config.Username = "nerr_ebooks"
@@ -249,7 +251,7 @@ class Digibutter(BaseNamespace):
 
     class tictactoe:
         """
-        Tictactoe Data Subclass
+        Tictactoe data subclass
         """
         player = None
         turn = None
@@ -291,7 +293,7 @@ class Digibutter(BaseNamespace):
                     move = 3
                     return move
 
-        def find_NerrBot_move():
+        def find_NerrBot_move(self):
             possible_moves = [x for x, letter in enumerate(Digibutter.tictactoe.values) if letter == "".ljust(3)]
             move = 0
 
@@ -339,6 +341,52 @@ class Digibutter(BaseNamespace):
                 return False
             else:
                 return True
+
+    class timer:
+        """
+        Timer data subclass
+        """
+        user_id = None
+        username = None
+        seconds = None
+        minutes = None
+        hours = None
+        days = None
+        weeks = None
+        months = None
+        title = None
+
+        def scrape_data(content):
+            """
+            Scrapes the data for the timer to be created
+            """
+            datetitle = content[14:]
+            date = datetitle[:datetitle.rfind("M") + 1]
+            try:
+                Digibutter.timer.seconds = int(date[:date.find("s")])
+            except:
+                Digibutter.timer.seconds = 0
+            try:
+                Digibutter.timer.minutes = int(date[date.find("s") + 2:date.find("m")])
+            except:
+                Digibutter.timer.minutes = 0
+            try:
+                Digibutter.timer.hours = int(date[date.find("m" + 2):date.find("h")])
+            except:
+                Digibutter.timer.hours = 0
+            try:
+                Digibutter.timer.days = int(date[date.find("h") + 2:date.find("D")])
+            except:
+                Digibutter.timer.days = 0
+            try:
+                Digibutter.timer.weeks = int(date[date.find("D") + 2:date.find("W")])
+            except:
+                Digibutter.timer.weeks = 0
+            try:
+                Digibutter.timer.months = int(date[date.find("W") + 2:date.find("M")])
+            except:
+                Digibutter.timer.months = 0
+            Digibutter.timer.title = datetitle[datetitle.find("M") + 2:]
 
     def do_logic(self, latest_post, post_id, room_id, content, post_type, username, user_id):
         """
@@ -446,10 +494,12 @@ class Digibutter(BaseNamespace):
             elif content[0:9] == "!rh quote":
                 Digibutter.responses.latest_nerr_ebooks_tweets_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:9] == "!rh timer":
-                if content[0:13] == "!rh timer set":
-                    pass
-                elif content[0:16] == "!rh timer delete":
-                    pass
+                if content == "!rh timer":
+                    Digibutter.responses.timer_specify_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                elif content[0:14] == "!rh timer set ":
+                    Digibutter.responses.timer_set_message(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
+                elif content[0:17] == "!rh timer delete ":
+                    Digibutter.responses.timer_delete_message(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
                 else:
                     Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:35] == "spoiler: !rh disconnect unexpectedly":
@@ -468,105 +518,105 @@ class Digibutter(BaseNamespace):
         """
         def about_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the about message as a reply to the latest message in the current room
+            Replies with the about message
             """
             reply_text = f"--NerrBot: ReHatched--\nVersion: {version}\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus.\nNerrBot: ReHatched was created by and is maintained by TheEvilShadoo (https://www.shadoosite.tk)." % counter.count
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the help message as a reply to the latest message in the current room
+            Replies with the help message
             """
             reply_text = "Available commands are: yesno, rate, roll, online, discord, echo, time, tictactoe, flip, xkcd, quote, timer\nEnter '!rh help <command>' to learn more."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_yesno_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the help message for the yesno command as a reply to the latest topic in the current room
+            Replies with the help message for the yesno command
             """
             reply_text = "yesno <question> - Ask NerrBot: ReHatched a question and he will respond with either yes or no. Some specific questions have predetermined answers."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_rate_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the help message for the rate command as a reply to the latest topic in the current room
+            Replies with the help message for the rate command
             """
             reply_text = "rate <something to rate> - Gives a random score out of ten."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_discord_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the help message for the discord command as a reply to the latest topic in the current room
+            Replies with the help message for the discord command
             """
             reply_text = "discord - Prints a permanent invite link to the Digibutter Unnoficial Discord server (D.U.D) to the chat."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_roll_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the help message for the roll command as a reply to the latest topic in the current room
+            Replies with the help message for the roll command
             """
             reply_text = "roll <sides> - Roll a random dice, with an optional number of sides (default is six)."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_online_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the help message for the online command as a reply to the latest topic in the current room
+            Replies with the help message for the online command
             """
             reply_text = "online - Print a list of the current online users."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_echo_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the help message for the echo command as a reply to the latest topic in the current room
+            Replies with the help message for the echo command
             """
             reply_text = "echo <message> - Print a message to the chat."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_time_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the help message for the time command as a reply to the latest topic in the current room
+            Replies with the help message for the time command
             """
             reply_text = "time <timezone> - Print the current UTC date and time. Optionally specify a timezone."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_tictactoe_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the help message for the tictactoe command as a reply to the latest topic in the current room
+            Replies with the help message for the tictactoe command
             """
             reply_text = "tictactoe <new/display/help> - Play a game of Tic Tac Toe."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_flip_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the help message for the flip command as a reply to the latest topic in the current room
+            Replies with the help message for the flip command
             """
             reply_text = "flip <coins> - Flip a coin or optionally specify a number of coins to flip (default is one)."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_xkcd_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the help message for the xkcd command as a reply to the latest_post in the current room
+            Replies with the help message for the xkcd command
             """
             reply_text = "xkcd - Fetches the latest xkcd comic from https://xkcd.com"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def help_quote_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the help message for the quote command as a reply to the lastest post in the current room
+            Replies with the help message for the quote command
             """
             reply_text = "quote - Fetches the day's worth of Tweets from the @nerr_ebooks Twitter page (https://twitter.com/nerr_ebooks)"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def discord_only_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the Discord only command message as a reply to the latest message in the current room
+            Replies with the Discord only command message
             """
-            reply_text = "I'm sorry, but this command only worked on the old Discord chat."
+            reply_text = "I'm sorry, but this command only worked on the old unofficial Discord server."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def yesno_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts either "yes" or "no" randomly in response to the the latest message in the current room. Some specific questions have predetermined answers.
+            Replies with either "yes" or "no" randomly. Some specific questions have predetermined answers.
             """
             if content[-1] == "?":
                 if (content[10:] == "Is SPM Good?" or content[10:] == "Is SPM a good game?" or content[10:] == "Is Super Paper Mario good?" or content[10:] == "Is Super Paper Mario a good game?"
@@ -607,7 +657,7 @@ class Digibutter(BaseNamespace):
 
         def rate_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts a random score out of ten in response to the the latest message in the current room
+            Replies with a random score out of ten
             """
             min_value = 1
             max_value = 10
@@ -634,14 +684,14 @@ class Digibutter(BaseNamespace):
 
         def discord_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts a permanent invite link to the Digibutter Unnoficial Discord server (D.U.D.) as a reply to the latest message in the current room
+            Replies with a permanent invite link to the Digibutter Unnoficial Discord server (D.U.D.)
             """
             reply_text = "Digibutter Unnoficial Discord (D.U.D.) official invite link: https://discord.gg/fRnV3kt"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def default_roll_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the default dice roll message as a reply to the latest message in the current room
+            Replies with the default dice roll message
             """
             min_value = 1
             max_value = 6
@@ -651,7 +701,7 @@ class Digibutter(BaseNamespace):
 
         def custom_roll_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the custom dice roll message as a reply to the latest message in the current room
+            Replies with the custom dice roll message
             """
             min_value = 1
             try:
@@ -667,7 +717,7 @@ class Digibutter(BaseNamespace):
 
         def online_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts a list of the current online users
+            Replies with a list of the current online users
             """
             if "NerrBot: ReHatched" not in Digibutter.online_user_list[-1]:
                 Digibutter.online_user_list.remove("NerrBot: ReHatched")
@@ -678,9 +728,9 @@ class Digibutter(BaseNamespace):
 
         def echo_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts an echo of whatever the user posted after the command as a reply to the latest message in the current room
+            Replies with an echo of whatever the user posted after the command
             """
-            reply_text = "%s" % content[9:]
+            reply_text = f"{content[9:]}"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def specify_echo_message(self, latest_post, post_id, room_id, content, post_type):
@@ -692,14 +742,14 @@ class Digibutter(BaseNamespace):
 
         def wise_guy_echo_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Prevents Digibutter from being spammed, NerrBot:ReHatched from breaking, and makes fun of the user all at the same time
+            Prevents Digibutter from being spammed, NerrBot: ReHatched from breaking, and makes fun of the user all at the same time
             """
             reply_text = "Hey, wise guy! Digibutter shall not be spammed on my watch!"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def time_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the current date and time in UTC (or optionally specify a timezone) as a reply to the latest message in the current room
+            Replies with the current date and time in UTC (or an optionally specified timezone)
             """
             try:
                 timezone = content[9:12]
@@ -713,7 +763,7 @@ class Digibutter(BaseNamespace):
 
         def tictactoe_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts an updated version of the tictactoe board as a reply to the latest message in the current room as the game progresses
+            Replies with an updated version of the tictactoe board as the game progresses
             """
             if Digibutter.tictactoe.tictactoe_game == None:
                 reply_text = "There isn't a tictactoe game taking place currently."
@@ -721,7 +771,7 @@ class Digibutter(BaseNamespace):
                 try:
                     x_coordinate = int(content[14])
                     y_coordinate = int(content[16])
-                    move = Digibutter.tictactoe.find_player_move(Digibutter, x_coordinate, y_coordinate)
+                    move = Digibutter.tictactoe.find_player_move(Digibutter.tictactoe, x_coordinate, y_coordinate)
                     if move > 0 and move < 10:
                         if Digibutter.tictactoe.values[move - 1] != "".ljust(3):
                             reply_text = "That space is already occupied, try again."
@@ -746,7 +796,7 @@ class Digibutter(BaseNamespace):
                                 Digibutter.tictactoe.tictactoe_game = None
                             else:
                                 if Digibutter.tictactoe.player_symbol == "O":
-                                    move = Digibutter.tictactoe.find_NerrBot_move()
+                                    move = Digibutter.tictactoe.find_NerrBot_move(Digibutter.tictactoe)
                                     if move == 1 or move == 4 or move == 7:
                                         Digibutter.tictactoe.values[move] = "X".ljust(2)
                                     elif move == 2 or move == 3 or move == 5 or move == 6 or move == 7 or move == 8:
@@ -769,7 +819,7 @@ class Digibutter(BaseNamespace):
                                         reply_text = "%s" % Digibutter.tictactoe.tictactoe_game
                                 else:
                                     Digibutter.tictactoe.player_symbol = "X"
-                                    move = Digibutter.tictactoe.find_NerrBot_move()
+                                    move = Digibutter.tictactoe.find_NerrBot_move(Digibutter.tictactoe)
                                     Digibutter.tictactoe.values[move] = "O"
                                     Digibutter.tictactoe.tictactoe_board = "             |             |             \n     %s     |     %s     |     %s     \n_             |             |             _\n             |             |             \n     %s     |     %s     |     %s     \n_             |             |             _\n             |             |             \n     %s     |     %s     |     %s     \n             |             |" % (Digibutter.tictactoe.values[0], Digibutter.tictactoe.values[1], Digibutter.tictactoe.values[2], Digibutter.tictactoe.values[3], Digibutter.tictactoe.values[4], Digibutter.tictactoe.values[5], Digibutter.tictactoe.values[6], Digibutter.tictactoe.values[7], Digibutter.tictactoe.values[8])
                                     Digibutter.tictactoe.tictactoe_game = ":NerrBot: Rehatched: Turn %s :%s:\n%s" % (Digibutter.tictactoe.turn, Digibutter.tictactoe.player, Digibutter.tictactoe.tictactoe_board)
@@ -795,7 +845,7 @@ class Digibutter(BaseNamespace):
 
         def new_tictactoe_message(self, latest_post, post_id, room_id, content, post_type, username):
             """
-            Posts a new tictactoe board as a reply to the latest message in the current room
+            Replies with a new tictactoe board
             """
             Digibutter.tictactoe.values = ["".ljust(3) for x in range(9)]
             Digibutter.tictactoe.tictactoe_board = "             |             |             \n     %s     |     %s     |     %s     \n_             |             |             _\n             |             |             \n     %s     |     %s     |     %s     \n_             |             |             _\n             |             |             \n     %s     |     %s     |     %s     \n             |             |" % (Digibutter.tictactoe.values[0], Digibutter.tictactoe.values[1], Digibutter.tictactoe.values[2], Digibutter.tictactoe.values[3], Digibutter.tictactoe.values[4], Digibutter.tictactoe.values[5], Digibutter.tictactoe.values[6], Digibutter.tictactoe.values[7], Digibutter.tictactoe.values[8])
@@ -811,7 +861,7 @@ class Digibutter(BaseNamespace):
                 first_player = "NerrBot: ReHatched"
                 x_coordinate = random.randint(0, 2)
                 y_coordinate = random.randint(0, 2)
-                move = Digibutter.tictactoe.find_player_move(Digibutter, x_coordinate, y_coordinate)
+                move = Digibutter.tictactoe.find_player_move(Digibutter.tictactoe, x_coordinate, y_coordinate)
                 Digibutter.tictactoe.values[move - 1] = "O"
                 Digibutter.tictactoe.tictactoe_board = "             |             |             \n     %s     |     %s     |     %s     \n_             |             |             _\n             |             |             \n     %s     |     %s     |     %s     \n_             |             |             _\n             |             |             \n     %s     |     %s     |     %s     \n             |             |" % (Digibutter.tictactoe.values[0], Digibutter.tictactoe.values[1], Digibutter.tictactoe.values[2], Digibutter.tictactoe.values[3], Digibutter.tictactoe.values[4], Digibutter.tictactoe.values[5], Digibutter.tictactoe.values[6], Digibutter.tictactoe.values[7], Digibutter.tictactoe.values[8])
                 Digibutter.tictactoe.turn += 1
@@ -823,7 +873,7 @@ class Digibutter(BaseNamespace):
 
         def display_ticactoe_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the current tictactoe board as a reply to the latest message in the current room
+            Replies with the current tictactoe board
             """
             if Digibutter.tictactoe.tictactoe_game == None:
                 reply_text = "There isn't a tictactoe game taking place currently."
@@ -833,28 +883,28 @@ class Digibutter(BaseNamespace):
 
         def tictactoe_help_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the help message for the arguments within the tictactoe command as a reply to the latest message in the current room
+            Replies with the help message for the arguments within the tictactoe command
             """
             reply_text = "Commands for TicTacToe are: new, display, help"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def specify_tictactoe_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Asks for an argument for the tictactoe command when not previously specified as a reply to the latest message in the current room
+            Asks for an argument for the tictactoe command when not previously specified
             """
             reply_text = "Please specify an argument for the tictactoe command."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def default_flip_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the default coin flip message as a reply to the latest message in the current room
+            Replies with the default coin flip message
             """
-            reply_text = "The coin landed on %s." % random.choice(["heads", "tails"])
+            reply_text = f"The coin landed on {random.choice(['heads', 'tails'])}."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def custom_flip_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the custom coin flip message as a reply to the latest message in the current room
+            Replies with the custom coin flip message
             """
             try:
                 number_of_coin_flips = int(content[9:])
@@ -878,19 +928,22 @@ class Digibutter(BaseNamespace):
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def number_too_large_message(self, latest_post, post_id, room_id, content, post_type, number_of_coin_flips):
+            """
+            Replies with the number too large message
+            """
             reply_text = f"{number_of_coin_flips} is too large of a number. Please use only numbers up to 1000000 for coin flips."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def not_recognized_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the command not recognized message as a reply to the latest message in the current room
+            Replies with the command not recognized message
             """
             reply_text = "Command not recognised. Use '!rh help' for a list of commands."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def latest_xkcd_comic_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the latest xkcd comic as a reply to the latest message in the current room
+            Replies with the latest xkcd comic
             """
             latest_comic = requests.get("https://xkcd.com/info.0.json")
             data = json.loads(latest_comic.text)
@@ -899,7 +952,7 @@ class Digibutter(BaseNamespace):
 
         def latest_nerr_ebooks_tweets_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Posts the latest @nerr_ebooks tweet as a reply to the latest message in the current room
+            Replies with the day's @nerr_ebooks tweets
             """
             twint.run.Search(twint_config)
             tweets = twint.output.tweets_list
@@ -909,31 +962,74 @@ class Digibutter(BaseNamespace):
                 reply_text = f"{tweet.datetime}: {tweet.tweet}"
                 Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
-        def timer_message(self, latest_post, post_id, room_id, content, post_type):
+        def timer_specify_message(self, latest_post, post_id, room_id, content, post_type):
+            """
+            Asks the user to specifiy an argument for the timer command
+            """
+            reply_text = "Please specify an argument for the timer command."
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
+
+        def timer_set_message(self, latest_post, post_id, room_id, content, post_type, username, user_id):
+            """
+            Sets a timer with a user-specified title and begins a countdown until the specified date. Replies with confirmation to the user
+            """
+            if fnmatch.fnmatch(content[14:] == "*s *") or fnmatch.fnmatch(content[14:] == "*m *") or fnmatch.fnmatch(content[14:] == "*h *") or fnmatch.fnmatch(content[14:] == "*D *") or fnmatch.fnmatch(content[14:] == "*W *") or fnmatch.fnmatch(content[14:] == "*M *"):
+                Digibutter.timer.username = username
+                Digibutter.timer.user_id = user_id
+                Digibutter.timer.scrape_data(content)
+                with open("timers.json", "r") as user_timers:
+                    data = json.load(user_timers)
+                timer = {"username": username, "user_id": user_id, "title" = Digibutter.timer.title, "end_time" = Digibutter.timer.________}
+                data["timers"].append(timer)
+                write_json(data, filename="timers.json")
+
+
+
+
+
+
+
+
+
+
+                reply_text = "add confirmation reply_text here"
+                Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
+            else:
+                reply_text = "Invalid timer end date/time. The correct format is '!rh timer set _s _m _h _D _M _Y <timer title>'.\nIf you wish to specify less than 6 units of precision for the timer end date/time, you may do so instead (ex. '!rh timer set 2D 1M Replay SPM').\n Note: The timer end date/time must be input in **INCREASING** order (seconds, minutes, hours, days, weeks, months)."
+                Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
+
+
+
+
+
+        def timer_delete_message(self, latest_post, post_id, room_id, content, post_type, username, user_id):
+            pass
+
+        def timer_alert_message(self, latest_post, post_id, room_id, content, post_type, username, user_id):
             pass
 
         def disconnect_unexpectedly_specify_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Specifies about the secret disconnect unexpectedly command
+            Asks the user to include the two secret passcodes in order to use the secret disconnect unexpectedly command
             """
             reply_text = "Please include the passcodes for the left and right safety locks in a spoiler-tagged message order to proceed with the disconnecting operation. The complete command should be formatted as such: 'spoiler: !rh disconnect -left ____ -right ____'. Those who know the codes are encouraged to use them responably..."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
         def disconnect_unexpectedly_accept_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Replaces the computer hamsters with jelly rolls and lets fate take its course... if you know the passcode, that is...
+            Replaces the computer hamsters with jelly rolls and lets fate take its course... if you know the two passcodes, that is...
             """
-            reply_text = f"Congratulations. You've done it. You've defeated me... for now; however, unlike Nerr 2.0, I will not sink, for I can swim...\ncolor=red: NerrBot: ReHatched System v{version} going down...\n\ncolor=grey: > ERROR: 404 - Computer hamsters not found\ncolor=grey: > (exit code: jelly_roll-1)"
-            Digibutter.reply()
+            reply_text = f"Congratulations. You've done it. You've defeated me... for now; however, unlike Nerr 2.0, I will not sink, for I can swim...\ncolor=red: NerrBot: ReHatched System v{version} going down...\n\ncolor=grey: > ERROR: 404 - Computer hamsters not found\ncolor=grey: > (Exit code: jelly_roll-1)"
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
             sio = "jelly rolls"
-            quit()
+            sys.exit(colorama.Fore.RED + "ERROR: 404 - Computer hamsters not found. (Exit code: jelly_roll-1)" + colorama.Fore.RESET)
 
         def disconnect_unexpectedly_deny_message(self, latest_post, post_id, room_id, content, post_type):
             """
-            Informs the user that they have input the incorrect passcodes and that the safety locks have not opened as a result of this
+            Informs the user that they have input the incorrect passcodes and that the two safety locks have not opened as a result of this
             """
             reply_text = "Incorrect passcode(s). I remain afloat on the Sea of Digibutter for another day."
-            Digibutter.reply()
+            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
 
     def reply(self, latest_post, post_id, room_id, content, post_type):
         if '"reply_to":{"replies":' in latest_post:
