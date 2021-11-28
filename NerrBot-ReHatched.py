@@ -43,10 +43,9 @@ import random
 import requests
 from socketIO_client import SocketIO, BaseNamespace
 import sys
+import time
 import threading
 import twint
-
-today = datetime.date.today()
 
 def write_json(data, filename):
     """
@@ -60,7 +59,7 @@ logging.basicConfig(format = "%(asctime)s: %(levelname)s: %(name)s: %(message)s"
 
 # Twint configuration
 twint_config = twint.Config()
-twint_config.Since = f"{today.strftime('%Y/%m/%d')}"
+twint_config.Since = f"{datetime.date.today().strftime('%Y/%m/%d')}"
 twint_config.Username = "nerr_ebooks"
 twint_config.Store_object = True
 twint_config.Hide_output = True
@@ -129,9 +128,10 @@ class Digibutter(BaseNamespace):
         except:
             user_id = all_posts_index['posts'][0]['user']['anon']
             username += " (anon)"
+        else:
+            Digibutter.record_user(Digibutter, username, user_id)
         logging.info('"All Posts" index successfully parsed')
         print('\n> "All Posts" index successfully parsed')
-        Digibutter.record_user(Digibutter, username, user_id)
         Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_gaming_news_index_response(self):
@@ -149,9 +149,10 @@ class Digibutter(BaseNamespace):
         except:
             user_id = gaming_news_index['posts'][0]['user']['anon']
             username += " (anon)"
+        else:
+            Digibutter.record_user(Digibutter, username, user_id)
         logging.info('"Gaming News" index successfully parsed')
         print('\n> "Gaming News" index successfully parsed')
-        Digibutter.record_user(Digibutter, username, user_id)
         Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_the_dump_index_response(self):
@@ -169,9 +170,10 @@ class Digibutter(BaseNamespace):
         except:
             user_id = the_dump_index['posts'][0]['user']['anon']
             username += " (anon)"
+        else:
+            Digibutter.record_user(Digibutter, username, user_id)
         logging.info('"The Dump" index successfully parsed')
         print('\n> "The Dump" index successfully parsed')
-        Digibutter.record_user(Digibutter, username, user_id)
         Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_NerrChat_chatlog_response(self):
@@ -189,9 +191,10 @@ class Digibutter(BaseNamespace):
         except:
             user_id = NerrChat_index['posts'][0]['user']['anon']
             username += " (anon)"
+        else:
+            Digibutter.record_user(Digibutter, username, user_id)
         logging.info('"NerrChat" index successfully parsed')
         print('\n> "NerrChat" index successfully parsed')
-        Digibutter.record_user(Digibutter, username, user_id)
         Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_new_post(self):
@@ -211,22 +214,21 @@ class Digibutter(BaseNamespace):
         except:
             user_id = latest_post['user']['anon']
             username += " (anon)"
+        else:
+            Digibutter.record_user(Digibutter, username, user_id)
         if post_type == "like1":
             original_post_content = latest_post['reply_to']['content']
             original_poster = latest_post['reply_to']['user']['name']
             logging.info(f"{username} liked {original_poster}'s post:\n{original_post_content}")
             print(f"\n> {username} liked {original_poster}'s post:\n{original_post_content}")
-            Digibutter.record_user(Digibutter, username, user_id)
         elif post_type == "like2":
             original_post_content = latest_post['reply_to']['content']
             original_poster = latest_post['reply_to']['user']['name']
             logging.info(f"{username} disliked {original_poster}'s post:\n{original_post_content}")
             print(f"\n> {username} disliked {original_poster}'s post:\n{original_post_content}")
-            Digibutter.record_user(Digibutter, username, user_id)
         else:
             logging.info('Received a new post: ' + content)
             print(f'\n> Received a new post from {username}:\n{content}')
-            Digibutter.record_user(Digibutter, username, user_id)
             Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_userupdate(self):
@@ -236,18 +238,18 @@ class Digibutter(BaseNamespace):
             Digibutter.online_user_list.append(user["name"])
 
     def record_user(self, username, user_id):
-            """
-            Whenever a new user posts a message, this records their username and user_id into a dictionary
-            """
-            with open("users.json", "r") as user_records:
-                data = json.load(user_records)
-            for user in data['users']:
-                if user['username'] == username:
-                    break
-            else:
-                user = {"username": username, "user_id": user_id}
-                data['users'].append(user)
-                write_json(data, filename="users.json")
+        """
+        Whenever a new user posts a message, this records their username and user_id into users.json
+        """
+        with open("users.json", "r") as user_records:
+            data = json.load(user_records)
+        for user in range(len(data)):
+            if data[user]['username'] == username:
+                break
+        else:
+            user = {"username": username, "user_id": user_id}
+            data.append(user)
+            write_json(data, filename="users.json")
 
     class tictactoe:
         """
@@ -346,47 +348,112 @@ class Digibutter(BaseNamespace):
         """
         Timer data subclass
         """
-        user_id = None
         username = None
-        seconds = None
-        minutes = None
-        hours = None
-        days = None
-        weeks = None
-        months = None
+        user_id = None
         title = None
+        months = None
+        weeks = None
+        days = None
+        hours = None
+        minutes = None
+        seconds = None
+        start = None
+        end = None
+        total_seconds = None
+
+        def reset():
+            """
+            Resets the values in the timer class
+            """
+            Digibutter.timer.username = None
+            Digibutter.timer.user_id = None
+            Digibutter.timer.title = None
+            Digibutter.timer.months = None
+            Digibutter.timer.weeks = None
+            Digibutter.timer.days = None
+            Digibutter.timer.hours = None
+            Digibutter.timer.minutes = None
+            Digibutter.timer.seconds = None
+            Digibutter.timer.start = None
+            Digibutter.timer.end = None
+            Digibutter.timer.total_seconds = None
+
+        def alert(username, user_id, title, months, weeks, days, hours, minutes, seconds):
+            """
+            Function to be called upon a user-defined timer ending. Removes the timer's entry in timers.json, and posts the timer_alert_message.
+            """
+            with open("timers.json", "r") as user_timers:
+                data = json.load(user_timers)
+            for timer in range(len(data)):
+                if data[timer]["user_id"] == user_id and data[timer]["title"] == title:
+                    data.pop(timer)
+                    break
+            logging.info(f"Posting timer alert for {username}'s timer, '{title}'")
+            print(f"\n> Posting timer alert for {username}'s timer, '{title}'")
+            sio.emit("posts:create", {"content":f"color=red: **Beep! Beep! Beep!**\n\n**{username}**, your timer, '{title}', has just ended! It has been {months} months, {weeks} weeks, {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds since you set this timer, nerr.","post_type":"","roomId":"sidebar","source":"db"})
+            logging.info("Message was sent successfully")
+            print("\n> Message was sent successfully")
 
         def scrape_data(content):
             """
             Scrapes the data for the timer to be created
             """
             datetitle = content[14:]
-            date = datetitle[:datetitle.rfind("M") + 1]
             try:
-                Digibutter.timer.seconds = int(date[:date.find("s")])
+                date = datetitle[:datetitle.find("s") + 1]
+                Digibutter.timer.title = datetitle[datetitle.find("s") + 2:]
             except:
-                Digibutter.timer.seconds = 0
-            try:
-                Digibutter.timer.minutes = int(date[date.find("s") + 2:date.find("m")])
-            except:
-                Digibutter.timer.minutes = 0
-            try:
-                Digibutter.timer.hours = int(date[date.find("m" + 2):date.find("h")])
-            except:
-                Digibutter.timer.hours = 0
-            try:
-                Digibutter.timer.days = int(date[date.find("h") + 2:date.find("D")])
-            except:
-                Digibutter.timer.days = 0
-            try:
-                Digibutter.timer.weeks = int(date[date.find("D") + 2:date.find("W")])
-            except:
-                Digibutter.timer.weeks = 0
-            try:
-                Digibutter.timer.months = int(date[date.find("W") + 2:date.find("M")])
-            except:
-                Digibutter.timer.months = 0
-            Digibutter.timer.title = datetitle[datetitle.find("M") + 2:]
+                try:
+                    date = datetitle[:datetitle.find("m") + 1]
+                    Digibutter.timer.title = datetitle[datetitle.find("m") + 2:]
+                except:
+                    try:
+                        date = datetitle[:datetitle.find("h") + 1]
+                        Digibutter.timer.title = datetitle[datetitle.find("h") + 2:]
+                    except:
+                        try:
+                            date = datetitle[:datetitle.find("D") + 1]
+                            Digibutter.timer.title = datetitle[datetitle.find("D") + 2:]
+                        except:
+                            try:
+                                date = datetitle[:datetitle.find("W") + 1]
+                                Digibutter.timer.title = datetitle[datetitle.find("W") + 2:]
+                            except:
+                                date = datetitle[:datetitle.find("M") + 1]
+                                Digibutter.timer.title = datetitle[datetitle.find("M") + 2:]
+            if "M" in date:
+                try:
+                    Digibutter.timer.months = int(date[:date.find("M")])
+                except:
+                    Digibutter.timer.months = 0
+            if "W" in date:
+                try:
+                    Digibutter.timer.weeks = int(date[date.find("M") + 2:date.find("W")])
+                except:
+                    Digibutter.timer.weeks = 0
+            if "D" in date:
+                try:
+                    Digibutter.timer.days = int(date[date.find("W") + 2:date.find("D")])
+                except:
+                    Digibutter.timer.days = 0
+            if "h" in date:
+                try:
+                    Digibutter.timer.hours = int(date[date.find("D") + 2:date.find("h")])
+                except:
+                    Digibutter.timer.hours = 0
+            if "m" in date:
+                try:
+                    Digibutter.timer.minutes = int(date[date.find("h") + 2:date.find("m")])
+                except:
+                    Digibutter.timer.minutes = 0
+            if "s" in date:
+                try:
+                    Digibutter.timer.seconds = int(date[date.find("m") + 2:date.find("s")])
+                except:
+                    Digibutter.timer.seconds = 0
+            Digibutter.timer.total_seconds = months * 2629800 + weeks * 604800 + days * 86400 + hours * 3600 + minutes * 60 + seconds
+            Digibutter.timer.start = datetime.datetime.now()
+            Digibutter.timer.end = Digibutter.timer.start + datetime.timedelta(seconds=total_seconds)
 
     def do_logic(self, latest_post, post_id, room_id, content, post_type, username, user_id):
         """
@@ -973,39 +1040,28 @@ class Digibutter(BaseNamespace):
             """
             Sets a timer with a user-specified title and begins a countdown until the specified date. Replies with confirmation to the user
             """
-            if fnmatch.fnmatch(content[14:] == "*s *") or fnmatch.fnmatch(content[14:] == "*m *") or fnmatch.fnmatch(content[14:] == "*h *") or fnmatch.fnmatch(content[14:] == "*D *") or fnmatch.fnmatch(content[14:] == "*W *") or fnmatch.fnmatch(content[14:] == "*M *"):
+            if fnmatch.fnmatch(content[14:] == "*M *") or fnmatch.fnmatch(content[14:] == "*W *") or fnmatch.fnmatch(content[14:] == "*D *") or fnmatch.fnmatch(content[14:] == "*h *") or fnmatch.fnmatch(content[14:] == "*m *") or fnmatch.fnmatch(content[14:] == "*s *"):
                 Digibutter.timer.username = username
                 Digibutter.timer.user_id = user_id
                 Digibutter.timer.scrape_data(content)
                 with open("timers.json", "r") as user_timers:
                     data = json.load(user_timers)
-                timer = {"username": username, "user_id": user_id, "title" = Digibutter.timer.title, "end_time" = Digibutter.timer.________}
-                data["timers"].append(timer)
+                timer = {"username": username, "user_id": user_id, "title": Digibutter.timer.title, "start": Digibutter.timer.start, "end": Digibutter.timer.end}
+                data.append(timer)
                 write_json(data, filename="timers.json")
-
-
-
-
-
-
-
-
-
-
-                reply_text = "add confirmation reply_text here"
+                countdown = threading.Timer(Digibutter.timer.total_seconds, Digibutter.timer.alert, [username, user_id, Digibutter.timer.title, Digibutter.timer.months, Digibutter.timer.weeks, Digibutter.timer.days, Digibutter.timer.hours, Digibutter.timer.minutes, Digibutter.timer.seconds])
+                countdown.start()
+                reply_text = "Your timer has been set. You may now proceed to wait patiently."
                 Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
+                Digibutter.timer.reset()
             else:
-                reply_text = "Invalid timer end date/time. The correct format is '!rh timer set _s _m _h _D _M _Y <timer title>'.\nIf you wish to specify less than 6 units of precision for the timer end date/time, you may do so instead (ex. '!rh timer set 2D 1M Replay SPM').\n Note: The timer end date/time must be input in **INCREASING** order (seconds, minutes, hours, days, weeks, months)."
+                reply_text = "Invalid timer end date/time. The correct format is '!rh timer set _M _W _D _h _m _s <timer title>'.\nIf you wish to specify less than 6 units of precision for the timer end date/time, you may do so instead (ex. '!rh timer set 1M 2D Replay SPM').\nNote: The timer end date/time must be input in **DECREASING** order ([M]onths, [W]eeks, [D]ays, [h]ours, [m]inutes, [s]econds)."
                 Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type)
-
-
-
-
 
         def timer_delete_message(self, latest_post, post_id, room_id, content, post_type, username, user_id):
             pass
 
-        def timer_alert_message(self, latest_post, post_id, room_id, content, post_type, username, user_id):
+        def timer_list_message(self, latest_post, post_id, room_id, content, post_type, username, user_id):
             pass
 
         def disconnect_unexpectedly_specify_message(self, latest_post, post_id, room_id, content, post_type):

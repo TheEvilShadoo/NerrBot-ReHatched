@@ -1,9 +1,9 @@
-{
-    "timers": [
-        {
-            "username": "NerrBot: ReHatched",
-            "user_id": "5f317021881daf02292ec9c4"
-            "placeholder": "True"
-        }
-    ]
-}
+[
+    {
+        "username": "NerrBot: ReHatched",
+        "user_id": "5f317021881daf02292ec9c4",
+        "title": "placeholder",
+        "start": null,
+        "end": null
+    }
+]
