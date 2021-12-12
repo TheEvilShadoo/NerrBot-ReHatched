@@ -32,12 +32,14 @@ print(colorama.Fore.GREEN + f"==================================================
  |_| \_|\___|_|  |_|  |____/ \___/ \__(_) |_| \_\_| |_| |___|___/ |_| \_\\\__,_|_| |_|_| |_|_|_| |_|\__, | (_) (_) (_)
                                                                                                    |___/             """ + colorama.Fore.RESET)
 
+from contextlib import contextmanager
 import counter
 from datetime import datetime, timedelta, timezone
 import fnmatch
 import json
 import json5
 import logging
+import os
 import pytz
 import random
 import requests
@@ -47,6 +49,27 @@ import time
 import threading
 import twint
 
+# Context manager method declarations
+@contextmanager
+def suppress_stdout():
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        sys.stdout = devnull
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout
+
+# Logging configuration
+logging.basicConfig(format = "%(asctime)s: %(levelname)s: %(name)s: %(message)s", datefmt='%m/%d/%Y %H:%M:%S', filename='NerrBot-ReHatched.log', filemode='w', level = logging.INFO)
+
+# Twint configuration
+twint_config = twint.Config()
+twint_config.Since = f"{datetime.now().strftime('%Y-%m-%d')}"
+twint_config.Username = "nerr_ebooks"
+twint_config.Store_object = True
+twint_config.Hide_output = True
+
 def write_json(data, filename):
     """
     JSON Writing Function
@@ -54,26 +77,16 @@ def write_json(data, filename):
     with open (filename, "w") as f:
         json.dump(data, f, indent=4)
 
-# Logging configuration
-logging.basicConfig(format = "%(asctime)s: %(levelname)s: %(name)s: %(message)s", datefmt='%m/%d/%Y %H:%M:%S', filename='NerrBot-ReHatched.log', filemode='w', level = logging.DEBUG)
-
-# Twint configuration
-twint_config = twint.Config()
-twint_config.Since = f"{datetime.now(timezone.utc).strftime('%Y/%m/%d')}"
-twint_config.Username = "nerr_ebooks"
-twint_config.Store_object = True
-twint_config.Hide_output = True
-
 class Digibutter(BaseNamespace):
     # Define class variables
     online_user_list = []
 
     # Digibutter Socket.io event definitions
     def on_connect(self):
-        logging.info('A connection with the Digibutter websocket has been established.')
-        print('\n> A connection with the Digibutter websocket has been established.')
+        logging.info("A connection with the Digibutter websocket has been established.")
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.LIGHTCYAN_EX + "A connection with the Digibutter websocket has been established." + colorama.Fore.RESET)
         logging.info("Attempting to login...")
-        print("\n> Attempting to login...")
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.LIGHTYELLOW_EX + "Attempting to login..." + colorama.Fore.RESET)
         sio.emit("ready", Digibutter.on_authentication(BaseNamespace))
         sio.wait(.2)
         sio.emit("posts:index", {"topic": False, "room": "db", "topicsOnly": False, "source": "db"}, Digibutter.on_all_posts_index_response)
@@ -90,17 +103,17 @@ class Digibutter(BaseNamespace):
 
     def on_authentication(self):
         logging.info("Successfully logged in")
-        print("\n> Successfully logged in")
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.LIGHTGREEN_EX + "Successfully logged in" + colorama.Fore.RESET)
 
     def on_disconnect(self):
-        logging.warning('The Digibutter websocket has closed the connection.')
-        print('\n> The Digibutter websocket has closed the connection.')
+        logging.warning("The Digibutter websocket has closed the connection.")
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.LIGHTRED_EX + "The Digibutter websocket has closed the connection." + colorama.Fore.RESET)
 
     def on_reconnect(self):
-        logging.info('Reconnected to the Digibutter websocket.')
-        print('\n> Reconnected to the Digibutter websocket.')
+        logging.info("Reconnected to the Digibutter websocket.")
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.LIGHTCYAN_EX + "Reconnected to the Digibutter websocket." + colorama.Fore.RESET)
         logging.info("Attempting to login...")
-        print("\n> Attempting to login...")
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.LIGHTYELLOW_EX + "Attempting to login..." + colorama.Fore.RESET)
         sio.emit("ready", Digibutter.on_authentication(BaseNamespace))
         sio.wait(.2)
         sio.emit("posts:index", {"topic": False, "room": "db", "topicsOnly": False, "source": "db"}, Digibutter.on_all_posts_index_response)
@@ -114,8 +127,8 @@ class Digibutter(BaseNamespace):
         sio.emit("posts:create", {"content":"I disconnected unexpectedly there, sorry!","post_type":"chat","roomId":"sidebar","source":"db"})
 
     def on_all_posts_index_response(self):
-        print('\n> Received posts index for room "All Posts"')
-        print('\n> Parsing index...')
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.BLUE + "Received posts index for room " + colorama.Fore.LIGHTWHITE_EX + "All Posts" + colorama.Fore.RESET)
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.BLUE + "Parsing index..." + colorama.Fore.RESET)
         all_posts_index = json5.loads(str(self))
         latest_post = all_posts_index['posts'][0]
         post_id = all_posts_index['posts'][0]['_id']
@@ -130,13 +143,13 @@ class Digibutter(BaseNamespace):
             username += " (anon)"
         else:
             Digibutter.record_user(Digibutter, username, user_id)
-        logging.info('"All Posts" index successfully parsed')
-        print('\n> "All Posts" index successfully parsed')
+        logging.info("'All Posts' index successfully parsed")
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.LIGHTWHITE_EX + "All Posts" + colorama.Fore.GREEN + " index successfully parsed" + colorama.Fore.RESET)
         Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_gaming_news_index_response(self):
-        print('\n> Received posts index for room "Gaming News"')
-        print('\n> Parsing index...')
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.BLUE + "Received posts index for room " + colorama.Fore.LIGHTWHITE_EX + "Gaming News" + colorama.Fore.RESET)
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.BLUE + "Parsing index..." + colorama.Fore.RESET)
         gaming_news_index = json5.loads(str(self))
         latest_post = gaming_news_index['posts'][0]
         post_id = gaming_news_index['posts'][0]['_id']
@@ -151,13 +164,13 @@ class Digibutter(BaseNamespace):
             username += " (anon)"
         else:
             Digibutter.record_user(Digibutter, username, user_id)
-        logging.info('"Gaming News" index successfully parsed')
-        print('\n> "Gaming News" index successfully parsed')
+        logging.info("'Gaming News' index successfully parsed")
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.LIGHTWHITE_EX + "Gaming News" + colorama.Fore.GREEN + " index successfully parsed" + colorama.Fore.RESET)
         Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_the_dump_index_response(self):
-        print('\n> Received posts index for room "The Dump"')
-        print('\n> Parsing index...')
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.BLUE + "Received posts index for room " + colorama.Fore.LIGHTWHITE_EX + "The Dump" + colorama.Fore.RESET)
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.BLUE + "Parsing index..." + colorama.Fore.RESET)
         the_dump_index = json5.loads(str(self))
         latest_post = the_dump_index['posts'][0]
         post_id = the_dump_index['posts'][0]['_id']
@@ -172,13 +185,13 @@ class Digibutter(BaseNamespace):
             username += " (anon)"
         else:
             Digibutter.record_user(Digibutter, username, user_id)
-        logging.info('"The Dump" index successfully parsed')
-        print('\n> "The Dump" index successfully parsed')
+        logging.info("'The Dump' index successfully parsed")
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.LIGHTWHITE_EX + "The Dump" + colorama.Fore.GREEN + " index successfully parsed" + colorama.Fore.RESET)
         Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_NerrChat_chatlog_response(self):
-        print('\n> Received index for "NerrChat"')
-        print('\n> Parsing index...')
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.BLUE + "Received index for " + colorama.Fore.LIGHTWHITE_EX + "NerrChat" + colorama.Fore.RESET)
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.BLUE + "Parsing index..." + colorama.Fore.RESET)
         NerrChat_index = json5.loads(str(self))
         latest_post = NerrChat_index['posts'][0]
         post_id = NerrChat_index['posts'][0]['_id']
@@ -193,8 +206,8 @@ class Digibutter(BaseNamespace):
             username += " (anon)"
         else:
             Digibutter.record_user(Digibutter, username, user_id)
-        logging.info('"NerrChat" index successfully parsed')
-        print('\n> "NerrChat" index successfully parsed')
+        logging.info("'NerrChat' index successfully parsed")
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.LIGHTWHITE_EX + "NerrChat" + colorama.Fore.GREEN + " index successfully parsed" + colorama.Fore.RESET)
         Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_new_post(self):
@@ -220,15 +233,15 @@ class Digibutter(BaseNamespace):
             original_post_content = latest_post['reply_to']['content']
             original_poster = latest_post['reply_to']['user']['name']
             logging.info(f"{username} liked {original_poster}'s post:\n{original_post_content}")
-            print(f"\n> {username} liked {original_poster}'s post:\n{original_post_content}")
+            print(colorama.Fore.WHITE + "\n> " + colorama.Fore.LIGHTWHITE_EX + f"{username}" + colorama.Fore.RED + " liked " + colorama.Fore.LIGHTWHITE_EX + f"{original_poster}" + colorama.Fore.RED + "'s post:\n" + colorama.Fore.RESET + f"{original_post_content}")
         elif post_type == "like2":
             original_post_content = latest_post['reply_to']['content']
             original_poster = latest_post['reply_to']['user']['name']
             logging.info(f"{username} disliked {original_poster}'s post:\n{original_post_content}")
-            print(f"\n> {username} disliked {original_poster}'s post:\n{original_post_content}")
+            print(colorama.Fore.WHITE + "\n> " + colo.Fore.LIGHTWHITE_EX + f"{username}" + colorama.Fore.MAGENTA + " disliked " + colorama.Fore.LIGHTWHITE_EX + f"{original_poster}" + colorama.Fore.MAGENTA + "'s post:\n" + colorama.Fore.RESET + f"{original_post_content}")
         else:
-            logging.info('Received a new post: ' + content)
-            print(f'\n> Received a new post from {username}:\n{content}')
+            logging.info(f"Received a new post from {username}:\n{content}")
+            print(colorama.Fore.WHITE + "\n> " + colorama.Fore.GREEN + "Received a new post from " + colorama.Fore.LIGHTWHITE_EX + f"{username}" + colorama.Fore.GREEN + ":\n" + colorama.Fore.RESET + f"{content}")
             Digibutter.do_logic(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
 
     def on_userupdate(self):
@@ -389,10 +402,10 @@ class Digibutter(BaseNamespace):
                     data.pop(timer)
                     break
             logging.info(f"Posting timer alert for {username}'s timer, '{title}'")
-            print(f"\n> Posting timer alert for {username}'s timer, '{title}'")
+            print(colorama.fore.WHITE + "\n> " + colorama.Fore.YELLOW + "Posting timer alert for " + colorama.Fore.LIGHTWHITE_EX + f"{username}" + colorama.Fore.YELLOW + "'s timer, '" + colorama.Fore.LIGHTWHITE_EX + f"{title}" + colorama.Fore.YELLOW + "'" + colorama.Fore.RESET)
             sio.emit("posts:create", {"content":f"color=red: **Beep! Beep! Beep!**\n\n**{username}**, your timer, '{title}', has just ended! It has been {months} months, {weeks} weeks, {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds since you set this timer, nerr.","post_type":"","roomId":"sidebar","source":"db"})
-            logging.info("Message was sent successfully")
-            print("\n> Message was sent successfully")
+            logging.info("Post was created successfully")
+            print(colorama.Fore.WHITE + "\n> " + colorama.Fore.CYAN + "Post was created successfully" + colorama.Fore.RESET)
 
         def scrape_data(content):
             """
@@ -561,14 +574,7 @@ class Digibutter(BaseNamespace):
                     Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content == "!rh xkcd":
                 Digibutter.responses.latest_xkcd_comic_message(Digibutter, latest_post, post_id, room_id, content, post_type)
-            elif content[0:9] == "!rh quote":
-
-
-                # HERE !!!
-
-
-
-
+            elif content == "!rh quote":
                 Digibutter.responses.latest_nerr_ebooks_tweets_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content[0:9] == "!rh timer":
                 if content == "!rh timer":
@@ -843,7 +849,7 @@ class Digibutter(BaseNamespace):
             except:
                 tz = "UTC"
             try:
-                reply_text = "The current date and time is: %s" % datetime.now(tz=pytz.timezone(f"{tz}")).strftime(f"%a %B %#d, %Y at %#I:%M:%S %p {tz}")
+                reply_text = "The current date and time is: %s" % datetime.now(tz=pytz.timezone(f"{tz}")).strftime(f"%a, %B %-d, %Y at %-I:%M:%S %p {tz}")
             except:
                 reply_text = f"'{tz}' is not a valid timezone."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
@@ -1038,21 +1044,11 @@ class Digibutter(BaseNamespace):
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def latest_nerr_ebooks_tweets_message(self, latest_post, post_id, room_id, content, post_type):
-
-
-            #EDIT Here to add single tweet response and separate the preexisting multi-tweet response. Finally revise the help message
-
-
-            """
-            Replies with the day's @nerr_ebooks tweets
-            """
-            twint.run.Search(twint_config)
+            with suppress_stdout():
+                twint.run.Search(twint_config)
             tweets = twint.output.tweets_list
-            reply_text = f"Here are today's tweets from the @{tweets[0].username} Twitter page (all times are in EST/EDT):"
+            reply_text = f"Here is the latest tweet from the @{tweets[0].username} Twitter page:\ncolor=green: {tweets[0].datetime}: {tweets[0].tweet}\n\ncolor=grey: (All times in EST/EDT. This is a limitation of the Twint Python library.)"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
-            for tweet in tweets:
-                reply_text = f"{tweet.datetime}: {tweet.tweet}"
-                Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def timer_specify_message(self, latest_post, post_id, room_id, content, post_type):
             """
@@ -1147,7 +1143,7 @@ class Digibutter(BaseNamespace):
             reply_text = f"Congratulations. You've done it. You've defeated me... for now; however, unlike Nerr 2.0, I will not sink, for I can swim...\ncolor=red: NerrBot: ReHatched System v{version} going down...\n\ncolor=grey: > ERROR: 404 - Computer hamsters not found\ncolor=grey: > (Exit code: jelly_roll-1)"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
             sio = "jelly rolls"
-            sys.exit(colorama.Fore.RED + "ERROR: 404 - Computer hamsters not found. (Exit code: jelly_roll-1)" + colorama.Fore.RESET)
+            sys.exit(colorama.Fore.LIGHTRED_EX + "ERROR: " + colorama.Fore.LIGHTWHITE_EX + "404" + colorama.Fore.LIGHTRED_EX + " - Computer hamsters not found. " + colorama.Fore.LIGHTWHITE_EX + "(Exit code: jelly_roll-1)" + colorama.Fore.RESET)
 
         def disconnect_unexpectedly_deny_message(self, latest_post, post_id, room_id, content, post_type):
             """
@@ -1161,11 +1157,11 @@ class Digibutter(BaseNamespace):
             type = "reply"
         else:
             type = "post"
-        logging.info(f'Replying to {type} with content: "{content}"')
-        print(f'\n> Replying to {type} with content: "{content}"')
+        logging.info(f"Replying to {type} with content:\n {content}")
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.YELLOW + f"Replying to {type} with content:\n" + colorama.Fore.RESET + f"{content}")
         sio.emit("posts:create", {"content":f"{reply_text}","reply_to":f"{post_id}","post_type":f"{post_type}","roomId":f"{room_id}","source":"db"})
-        logging.info("Message was sent successfully")
-        print("\n> Message was sent successfully")
+        logging.info("Reply was sent successfully")
+        print(colorama.Fore.WHITE + "\n> " + colorama.Fore.CYAN + "Reply was sent successfully" + colorama.Fore.RESET)
 
 sio = SocketIO("http://digibutter.nerr.biz", 80, Digibutter, cookies={"nerr3": "s:uW83D8OONzshQkshsXgwYiZG.GhLY3EKzpIt6tuZtsLcfiWpfu4ze5QsHkZ8gfQtKDHM"})
 sio.on("posts:create", Digibutter.on_new_post)
