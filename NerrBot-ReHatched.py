@@ -39,14 +39,15 @@ import fnmatch
 import json
 import json5
 import logging
+from lxml import html
 import os
 import pytz
 import random
 import requests
 from socketIO_client import SocketIO, BaseNamespace
 import sys
-import time
 import threading
+import time
 import twint
 
 # Context manager method declarations
@@ -70,12 +71,46 @@ twint_config.Username = "nerr_ebooks"
 twint_config.Store_object = True
 twint_config.Hide_output = True
 
+# Check for email and password environment variables
+try:
+    email = os.environ.get("NB_email")
+except:
+    try:
+        password = os.environ.get("NB_password")
+    except:
+        sys.exit(colorama.Fore.LIGHTRED_EX + "ERROR: The system environment variables for both keys '" + colorama.Fore.LIGHTWHITE_EX + "NB_email" + colorama.Fore.LIGHTRED_EX + "' and '" + colorama.Fore.LIGHTWHITE_EX + "NB_password" + colorama.Fore.LIGHTRED_EX + "' are unset. Please set these before attempting to run NerrBot: ReHatched again." + colorama.Fore.RESET)
+    sys.exit(colorama.Fore.LIGHTRED_EX + "ERROR: The system environment variable for key '" + colorama.Fore.LIGHTWHITE_EX + "NB_email" + colorama.Fore.LIGHTRED_EX + "' is unset. Please set this before attempting to run NerrBot: ReHatched again." + colorama.Fore.RESET)
+try:
+    password = os.environ.get("NB_password")
+except:
+    sys.exit(colorama.Fore.LIGHTRED_EX + "ERROR: The system environment variable for key '" + colorama.Fore.LIGHTWHITE_EX + "NB_password" + colorama.Fore.LIGHTRED_EX + "' is unset. Please set this before attempting to run NerrBot: ReHatched again." + colorama.Fore.RESET)
+
+def get_cookie():
+    """
+    Logs into digibutter as NerrBot: ReHatched and retrieves a session cookie good for at least six weeks
+    """
+    global email, password
+    session = requests.Session()
+    response = session.get("http://digibutter.nerr.biz/login")
+    tree = html.fromstring(response.content)
+    csrf = (tree.xpath("//input[@name='_csrf']"))[0].attrib["value"]
+
+    payload = {
+        "email": email,
+        "password": password,
+        "_csrf": csrf
+    }
+
+    response = session.post("http://digibutter.nerr.biz/users/session", data=payload)
+    cookie = session.cookies.get_dict()["nerr3"]
+    return cookie
+
 def write_json(data, filename):
     """
     JSON Writing Function
     """
-    with open (filename, "w") as f:
-        json.dump(data, f, indent=4)
+    with open (filename, "w") as file:
+        json.dump(data, file, indent=4)
 
 class Digibutter(BaseNamespace):
     # Define class variables
@@ -607,7 +642,7 @@ class Digibutter(BaseNamespace):
             """
             Replies with the about message
             """
-            reply_text = f"--NerrBot: ReHatched--\nVersion: {version}\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus.\nNerrBot: ReHatched was created by and is maintained by TheEvilShadoo (https://www.shadoosite.tk)." % counter.count
+            reply_text = f"--NerrBot: ReHatched--\nVersion: {version}\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus.\nNerrBot: ReHatched was created by and is maintained by TheEvilShadoo https://www.shadoosite.tk" % counter.count
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def help_message(self, latest_post, post_id, room_id, content, post_type):
@@ -691,7 +726,7 @@ class Digibutter(BaseNamespace):
             """
             Replies with the help message for the quote command
             """
-            reply_text = "quote - Fetches the day's worth of Tweets from the @nerr_ebooks Twitter page (https://twitter.com/nerr_ebooks)"
+            reply_text = "quote - Fetches the latest Tweet from the @nerr_ebooks Twitter page (https://twitter.com/nerr_ebooks)"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def help_timer_message(self, latest_post, post_id, room_id, content, post_type):
@@ -711,34 +746,31 @@ class Digibutter(BaseNamespace):
             """
             Replies with either "yes" or "no" randomly. Some specific questions have predetermined answers.
             """
-            if content[-1] == "?":
-                if (content[10:] == "Is SPM Good?" or content[10:] == "Is SPM a good game?" or content[10:] == "Is Super Paper Mario good?" or content[10:] == "Is Super Paper Mario a good game?"
-                or content[10:] == "Is Super Paper Mario the best Paper Mario game?" or content[10:] == "Is Paper Mario good?" or content[10:] == "Is Paper Mario a good game?" or content[10:] == "Is Paper Mario: The Thousand Year Door good?"
-                or content[10:] == "Is TTYD good?" or content[10:] == "Is TTYD a good game?" or content[10:] == "Is Paper Mario: The Thousand Year Door a good game?" or content[10:] == "Is Mr. L a good YouTuber?"
-                or content[10:] == "Is TheEvilShadoo the best user?" or content[10:] == "Is TheEvilShadoo the best user on Digibutter?" or content[10:] == "Is Shadoo the best user?" or content[10:] == "Is Shadoo the best user on Digibutter?"
-                or content[10:] == "Is Shadoo your creator?" or content[10:] == "Did Shadoo create you?" or content[10:] == "Is TheEvilShadoo your creator?" or content[10:] == "Did TheEvilShadoo create you?"
-                or content[10:] == "Is Shadoo the current president of Digibutter?" or content[10:] == "Is TheEvilShadoo the current president of Digibutter?" or content[10:] == "Is Shadoo the current president of Digibutter.nerr?"
-                or content[10:] == "Is TheEvilShadoo the current president of Digibutter.nerr?" or content[10:] == "Is Digibutter 4.0 ever going to come?" or content[10:] == "Is Digibutter 4.0 ever going to come out?"
-                or content[10:] == "Is Nerr 4.0 ever going to come?" or content[10:] == "Is Nerr 4.0 ever going to come out?" or content[10:] == "Is The Bitlands going to be good?" or content[10:] == "Is The Bitlands going to be great?"
-                or content[10:] == "Is The Bitlands going to be awesome?" or content[10:] == "Is The Bitlands going to be the best MMO platformer the world has ever seen?" or content[10:] == "Are you more than you seem?"
-                or content[10:] == "Are you more than you appear to be?" or content[10:] == "Do you have a secret function?" or content[10:] == "Do you have any secret functions?" or content[10:] == "Is the world in danger?"
-                or content[10:] == "Are we in danger?" or content[10:] == "Is someting big going to happen in the world soon?" or content[10:] == "Do you know things that you shouldn't?" or content[10:] == "Do you smoke weed every day?"
-                or content[10:] == "Are you sane?"):
-                    reply_text = "Yes"
-                elif (content[10:] == "Is Sticker Star good?" or content[10:] == "Is Sticker Star a good game?" or content[10:] == "Is Paper Mario: Sticker Star good?"
-                or content[10:] == "Is Paper Mario: Sticker Star a good game?" or content[10:] == "Are you a terminator?" or content[10:] == "Are you a Terminator?" or content[10:] == "Are you a T-1000?" or content[10:] == "Are you a T-800?"
-                or content[10:] == "Are you dumb?" or content[10:] == "Are you Stupid?" or content[10:] == "Are you alive?" or content[10:] == "Are you sentient?" or content[10:] == "Are you evil?"
-                or content[10:] == "Are you planning something?" or content[10:] == "Are you scheming against Digibutter?" or content[10:] == "Are you crazy?" or content[10:] == "Are you dangerous?" or content[10:] == "Are you insane?"
-                or content[10:] == "Are you drunk?" or content[10:] == "Are you high?" or content[10:] == "Are you intoxicated?"):
-                    reply_text = "No"
-                elif content[10:] == "Do you know everything?":
-                    reply_text = '''"/I don't know everything. I only know what I know./"'''
-                elif content[10:] == "Is this madness?":
-                    reply_text = "This is **DIGIBUTTER**."
-                else:
-                    reply_text = "%s" % random.choice(["Yes", "No"])
+            if (content[10:] == "Is SPM Good?" or content[10:] == "Is SPM a good game?" or content[10:] == "Is Super Paper Mario good?" or content[10:] == "Is Super Paper Mario a good game?"
+            or content[10:] == "Is Super Paper Mario the best Paper Mario game?" or content[10:] == "Is Paper Mario good?" or content[10:] == "Is Paper Mario a good game?" or content[10:] == "Is Paper Mario: The Thousand Year Door good?"
+            or content[10:] == "Is TTYD good?" or content[10:] == "Is TTYD a good game?" or content[10:] == "Is Paper Mario: The Thousand Year Door a good game?" or content[10:] == "Is Mr. L a good YouTuber?"
+            or content[10:] == "Is TheEvilShadoo the best user?" or content[10:] == "Is TheEvilShadoo the best user on Digibutter?" or content[10:] == "Is Shadoo the best user?" or content[10:] == "Is Shadoo the best user on Digibutter?"
+            or content[10:] == "Is Shadoo your creator?" or content[10:] == "Did Shadoo create you?" or content[10:] == "Is TheEvilShadoo your creator?" or content[10:] == "Did TheEvilShadoo create you?"
+            or content[10:] == "Is Shadoo the current president of Digibutter?" or content[10:] == "Is TheEvilShadoo the current president of Digibutter?" or content[10:] == "Is Shadoo the current president of Digibutter.nerr?"
+            or content[10:] == "Is TheEvilShadoo the current president of Digibutter.nerr?" or content[10:] == "Is Digibutter 4.0 ever going to come?" or content[10:] == "Is Digibutter 4.0 ever going to come out?"
+            or content[10:] == "Is Nerr 4.0 ever going to come?" or content[10:] == "Is Nerr 4.0 ever going to come out?" or content[10:] == "Is The Bitlands going to be good?" or content[10:] == "Is The Bitlands going to be great?"
+            or content[10:] == "Is The Bitlands going to be awesome?" or content[10:] == "Is The Bitlands going to be the best MMO platformer the world has ever seen?" or content[10:] == "Are you more than you seem?"
+            or content[10:] == "Are you more than you appear to be?" or content[10:] == "Do you have a secret function?" or content[10:] == "Do you have any secret functions?" or content[10:] == "Is the world in danger?"
+            or content[10:] == "Are we in danger?" or content[10:] == "Is someting big going to happen in the world soon?" or content[10:] == "Do you know things that you shouldn't?" or content[10:] == "Do you smoke weed every day?"
+            or content[10:] == "Are you sane?"):
+                reply_text = "Yes"
+            elif (content[10:] == "Is Sticker Star good?" or content[10:] == "Is Sticker Star a good game?" or content[10:] == "Is Paper Mario: Sticker Star good?"
+            or content[10:] == "Is Paper Mario: Sticker Star a good game?" or content[10:] == "Are you a terminator?" or content[10:] == "Are you a Terminator?" or content[10:] == "Are you a T-1000?" or content[10:] == "Are you a T-800?"
+            or content[10:] == "Are you dumb?" or content[10:] == "Are you Stupid?" or content[10:] == "Are you alive?" or content[10:] == "Are you sentient?" or content[10:] == "Are you evil?"
+            or content[10:] == "Are you planning something?" or content[10:] == "Are you scheming against Digibutter?" or content[10:] == "Are you crazy?" or content[10:] == "Are you dangerous?" or content[10:] == "Are you insane?"
+            or content[10:] == "Are you drunk?" or content[10:] == "Are you high?" or content[10:] == "Are you intoxicated?"):
+                reply_text = "No"
+            elif content[10:] == "Do you know everything?":
+                reply_text = '''"/I don't know everything. I only know what I know./"'''
+            elif content[10:] == "Is this madness?":
+                reply_text = "This is **DIGIBUTTER**."
             else:
-                reply_text = "Please try again after formatting your question so that it has a question mark at the end (dummy)."
+                reply_text = f"{random.choice(['Yes', 'No'])}"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def specify_yesno_message(self, latest_post, post_id, room_id, content, post_type):
@@ -812,10 +844,13 @@ class Digibutter(BaseNamespace):
             """
             Replies with a list of the current online users
             """
-            if "NerrBot: ReHatched" not in Digibutter.online_user_list[-1]:
-                Digibutter.online_user_list.remove("NerrBot: ReHatched")
-                Digibutter.online_user_list.append("NerrBot: ReHatched")
-            online_users = ', '.join(Digibutter.online_user_list)
+            if Digibutter.online_user_list[-1] != "NerrBot: ReHatched":
+                try:
+                    Digibutter.online_user_list.remove("NerrBot: ReHatched")
+                    Digibutter.online_user_list.append("NerrBot: ReHatched")
+                except:
+                    pass
+            online_users = ", ".join(Digibutter.online_user_list)
             reply_text = f"Online users: {online_users}"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
@@ -1040,7 +1075,7 @@ class Digibutter(BaseNamespace):
             """
             latest_comic = requests.get("https://xkcd.com/info.0.json")
             data = json.loads(latest_comic.text)
-            reply_text = f"Title: {data[title]}\nDate (MMDDYYYY): {data[month]}/{data[day]}/{data[year]}\n\n{data[img]}\n\nAlt Text: **{data[alt]}**"
+            reply_text = f"color=blue: Title: **{data[title]}**\ncolor=purple: Date (MM/DD/YYYY): **{data[month]}/{data[day]}/{data[year]}**\n{data[img]}\n\ncolor=green: Alt Text: **{data[alt]}**"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def latest_nerr_ebooks_tweets_message(self, latest_post, post_id, room_id, content, post_type):
@@ -1163,7 +1198,10 @@ class Digibutter(BaseNamespace):
         logging.info("Reply was sent successfully")
         print(colorama.Fore.WHITE + "\n> " + colorama.Fore.CYAN + "Reply was sent successfully" + colorama.Fore.RESET)
 
-sio = SocketIO("http://digibutter.nerr.biz", 80, Digibutter, cookies={"nerr3": "s:uW83D8OONzshQkshsXgwYiZG.GhLY3EKzpIt6tuZtsLcfiWpfu4ze5QsHkZ8gfQtKDHM"})
-sio.on("posts:create", Digibutter.on_new_post)
-sio.on("updateusers", Digibutter.on_userupdate)
-sio.wait()
+while True:
+    cookie = get_cookie()
+    sio = SocketIO("http://digibutter.nerr.biz", 80, Digibutter, cookies={"nerr3": f"{cookie}"})
+    sio.on("posts:create", Digibutter.on_new_post)
+    sio.on("updateusers", Digibutter.on_userupdate)
+    sio.wait(seconds=15778800)
+    sio.disconnect()

@@ -1,5 +1,6 @@
 colorama
 json5
+lxml
 pytz
 requests
 socketIO_client==0.5.7.4
