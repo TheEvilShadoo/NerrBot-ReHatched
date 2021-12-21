@@ -1075,14 +1075,15 @@ class Digibutter(BaseNamespace):
             """
             latest_comic = requests.get("https://xkcd.com/info.0.json")
             data = json.loads(latest_comic.text)
-            reply_text = f"color=blue: Title: **{data[title]}**\ncolor=purple: Date (MM/DD/YYYY): **{data[month]}/{data[day]}/{data[year]}**\n{data[img]}\n\ncolor=green: Alt Text: **{data[alt]}**"
+            reply_text = f"color=blue: Title: **{data['title']}**\ncolor=purple: Date (MM/DD/YYYY): **{data['month']}/{data['day']}/{data['year']}**\n{data['img']}\n\ncolor=green: Alt Text: **{data['alt']}**"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def latest_nerr_ebooks_tweets_message(self, latest_post, post_id, room_id, content, post_type):
             with suppress_stdout():
                 twint.run.Search(twint_config)
             tweets = twint.output.tweets_list
-            reply_text = f"Here is the latest tweet from the @{tweets[0].username} Twitter page:\ncolor=green: {tweets[0].datetime}: {tweets[0].tweet}\n\ncolor=grey: (All times in EST/EDT. This is a limitation of the Twint Python library.)"
+            time.sleep(1)
+            reply_text = f"Here is the latest tweet from the @{tweets[0].username} Twitter page:\ncolor=green: {tweets[0].datetime}: {tweets[0].tweet}"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def timer_specify_message(self, latest_post, post_id, room_id, content, post_type):

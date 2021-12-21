@@ -4,4 +4,4 @@ lxml
 pytz
 requests
 socketIO_client==0.5.7.4
-twint
+git+https://github.com/twintproject/twint.git@origin/master#egg=twint
