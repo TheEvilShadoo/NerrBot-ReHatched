@@ -1,17 +1,16 @@
 import time
 
+# Variables to keep track of and display
 count = 0
+seconds = 0
+minutes = 0
+hours = 0
+days = 0
 
 def counter():
-    # Variables to keep track and display
-    seconds = 0
-    minutes = 0
-    hours = 0
-    days = 0
-
     # Start Timer
     while True:
-        global count
+        global count, seconds, minutes, hours, days
         count = str(days) + " days, " + str(hours) + " hours, " + str(minutes) + " minutes and " + str(seconds) + " seconds"
         time.sleep(1)
         seconds += 1
