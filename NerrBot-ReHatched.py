@@ -291,12 +291,12 @@ class Digibutter(BaseNamespace):
         """
         with open("users.json", "r") as users:
             data = json.load(users)
-        for user in range(len(data)):
-            if data[user]['username'] == username:
+        for user in data["users"]:
+            if user["username"] == username:
                 break
         else:
             user = {"username": username, "user_id": user_id}
-            data.append(user)
+            data["users"].append(user)
             write_json(data, filename="users.json")
 
     class tictactoe:
