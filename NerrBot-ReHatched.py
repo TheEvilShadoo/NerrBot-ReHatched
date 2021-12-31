@@ -273,7 +273,7 @@ class Digibutter(BaseNamespace):
             original_post_content = latest_post['reply_to']['content']
             original_poster = latest_post['reply_to']['user']['name']
             logging.info(f"{username} disliked {original_poster}'s post:\n{original_post_content}")
-            print(colorama.Fore.WHITE + "\n> " + colo.Fore.LIGHTWHITE_EX + f"{username}" + colorama.Fore.MAGENTA + " disliked " + colorama.Fore.LIGHTWHITE_EX + f"{original_poster}" + colorama.Fore.MAGENTA + "'s post:\n" + colorama.Fore.RESET + f"{original_post_content}")
+            print(colorama.Fore.WHITE + "\n> " + colorama.Fore.LIGHTWHITE_EX + f"{username}" + colorama.Fore.MAGENTA + " disliked " + colorama.Fore.LIGHTWHITE_EX + f"{original_poster}" + colorama.Fore.MAGENTA + "'s post:\n" + colorama.Fore.RESET + f"{original_post_content}")
         else:
             logging.info(f"Received a new post from {username}:\n{content}")
             print(colorama.Fore.WHITE + "\n> " + colorama.Fore.GREEN + "Received a new post from " + colorama.Fore.LIGHTWHITE_EX + f"{username}" + colorama.Fore.GREEN + ":\n" + colorama.Fore.RESET + f"{content}")
