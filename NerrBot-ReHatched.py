@@ -642,7 +642,7 @@ class Digibutter(BaseNamespace):
             """
             Replies with the about message
             """
-            reply_text = f"--NerrBot: ReHatched--\nVersion: {version}\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus.\nNerrBot: ReHatched was created by and is maintained by TheEvilShadoo https://www.shadoosite.tk" % counter.count
+            reply_text = f"--NerrBot: ReHatched--\nVersion: {version}\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus.\nNerrBot: ReHatched was created by and is maintained by TheEvilShadoo https://www.shadoosite.xyz" % counter.count
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def help_message(self, latest_post, post_id, room_id, content, post_type):
