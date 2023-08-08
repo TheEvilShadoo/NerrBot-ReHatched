@@ -2,6 +2,6 @@ colorama
 json5
 lxml
 pytz
+re
 requests
 socketIO_client==0.5.7.4
-git+https://github.com/twintproject/twint.git@origin/master#egg=twint

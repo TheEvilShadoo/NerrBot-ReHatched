@@ -1,7 +1,9 @@
+#!/usr/bin/env python3
+
 import colorama
 colorama.init()
 
-version = "1.3.0"
+version = "1.4.0 - Nerr 4.0 Soon Edition"
 
 print(colorama.Fore.GREEN + f"====================================================NerrBot: RH v{version}====================================================" + colorama.Fore.LIGHTBLUE_EX + """
 
@@ -35,7 +37,6 @@ print(colorama.Fore.GREEN + f"==================================================
 from contextlib import contextmanager
 import counter
 from datetime import datetime, timedelta, timezone
-import fnmatch
 import json
 import json5
 import logging
@@ -43,12 +44,12 @@ from lxml import html
 import os
 import pytz
 import random
+import re
 import requests
 from socketIO_client import SocketIO, BaseNamespace
 import sys
 import threading
 import time
-import twint
 
 # Context manager method declarations
 @contextmanager
@@ -63,13 +64,6 @@ def suppress_stdout():
 
 # Logging configuration
 logging.basicConfig(format = "%(asctime)s: %(levelname)s: %(name)s: %(message)s", datefmt='%m/%d/%Y %H:%M:%S', filename='NerrBot-ReHatched.log', filemode='w', level = logging.INFO)
-
-# Twint configuration
-twint_config = twint.Config()
-twint_config.Since = f"{datetime.now().strftime('%Y-%m-%d')}"
-twint_config.Username = "nerr_ebooks"
-twint_config.Store_object = True
-twint_config.Hide_output = True
 
 # Check for email and password environment variables
 try:
@@ -159,7 +153,7 @@ class Digibutter(BaseNamespace):
         sio.wait(.2)
         sio.emit("posts:chats", {"room": "sidebar"}, Digibutter.on_NerrChat_chatlog_response)
         sio.wait(.2)
-        sio.emit("posts:create", {"content":"I disconnected unexpectedly there, sorry!","post_type":"chat","roomId":"sidebar","source":"db"})
+        sio.emit("posts:create", {"content":f"color=red: NerrBot System v{version} Online","post_type":"","roomId":"sidebar","source":"db"})
 
     def on_all_posts_index_response(self):
         print(colorama.Fore.WHITE + "\n> " + colorama.Fore.BLUE + "Received posts index for room " + colorama.Fore.LIGHTWHITE_EX + "All Posts" + colorama.Fore.RESET)
@@ -435,10 +429,11 @@ class Digibutter(BaseNamespace):
             for timer in range(len(data)):
                 if data[timer]["user_id"] == user_id and data[timer]["title"] == title:
                     data.pop(timer)
+                    write_json(data, filename="timers.json")
                     break
             logging.info(f"Posting timer alert for {username}'s timer, '{title}'")
-            print(colorama.fore.WHITE + "\n> " + colorama.Fore.YELLOW + "Posting timer alert for " + colorama.Fore.LIGHTWHITE_EX + f"{username}" + colorama.Fore.YELLOW + "'s timer, '" + colorama.Fore.LIGHTWHITE_EX + f"{title}" + colorama.Fore.YELLOW + "'" + colorama.Fore.RESET)
-            sio.emit("posts:create", {"content":f"color=red: **Beep! Beep! Beep!**\n\n**{username}**, your timer, '{title}', has just ended! It has been {months} months, {weeks} weeks, {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds since you set this timer, nerr.","post_type":"","roomId":"sidebar","source":"db"})
+            print(colorama.Fore.WHITE + "\n> " + colorama.Fore.YELLOW + "Posting timer alert for " + colorama.Fore.LIGHTWHITE_EX + f"{username}" + colorama.Fore.YELLOW + "'s timer, '" + colorama.Fore.LIGHTWHITE_EX + f"{title}" + colorama.Fore.YELLOW + "'" + colorama.Fore.RESET)
+            sio.emit("posts:create", {"content":f"color=red: **Beep! Beep! Beep!**\n\n**{username},** your timer, \"{title},\" has just ended! It has been {months} months, {weeks} weeks, {days} days, {hours} hours, {minutes} minutes, and {seconds} seconds since you set this timer, nerr.","post_type":"","roomId":"sidebar","source":"db"})
             logging.info("Post was created successfully")
             print(colorama.Fore.WHITE + "\n> " + colorama.Fore.CYAN + "Post was created successfully" + colorama.Fore.RESET)
 
@@ -448,66 +443,48 @@ class Digibutter(BaseNamespace):
             """
             datetitle = content[14:]
             try:
-                date = datetitle[:datetitle.find("s") + 1]
-                Digibutter.timer.title = datetitle[datetitle.find("s") + 2:]
+                M = re.search("[0-9]*\[M\]", datetitle)
+                Digibutter.timer.months = int(re.findall(r'\d+', M.group())[0])
             except:
-                try:
-                    date = datetitle[:datetitle.find("m") + 1]
-                    Digibutter.timer.title = datetitle[datetitle.find("m") + 2:]
-                except:
-                    try:
-                        date = datetitle[:datetitle.find("h") + 1]
-                        Digibutter.timer.title = datetitle[datetitle.find("h") + 2:]
-                    except:
-                        try:
-                            date = datetitle[:datetitle.find("D") + 1]
-                            Digibutter.timer.title = datetitle[datetitle.find("D") + 2:]
-                        except:
-                            try:
-                                date = datetitle[:datetitle.find("W") + 1]
-                                Digibutter.timer.title = datetitle[datetitle.find("W") + 2:]
-                            except:
-                                date = datetitle[:datetitle.find("M") + 1]
-                                Digibutter.timer.title = datetitle[datetitle.find("M") + 2:]
-            if "M" in date:
-                try:
-                    Digibutter.timer.months = int(date[:date.find("M")])
-                except:
-                    Digibutter.timer.months = 0
-            if "W" in date:
-                try:
-                    Digibutter.timer.weeks = int(date[date.find("M") + 2:date.find("W")])
-                except:
-                    Digibutter.timer.weeks = 0
-            if "D" in date:
-                try:
-                    Digibutter.timer.days = int(date[date.find("W") + 2:date.find("D")])
-                except:
-                    Digibutter.timer.days = 0
-            if "h" in date:
-                try:
-                    Digibutter.timer.hours = int(date[date.find("D") + 2:date.find("h")])
-                except:
-                    Digibutter.timer.hours = 0
-            if "m" in date:
-                try:
-                    Digibutter.timer.minutes = int(date[date.find("h") + 2:date.find("m")])
-                except:
-                    Digibutter.timer.minutes = 0
-            if "s" in date:
-                try:
-                    Digibutter.timer.seconds = int(date[date.find("m") + 2:date.find("s")])
-                except:
-                    Digibutter.timer.seconds = 0
-            Digibutter.timer.total_seconds = months * 2629800 + weeks * 604800 + days * 86400 + hours * 3600 + minutes * 60 + seconds
+                Digibutter.timer.months = 0
+            try:
+                W = re.search("[0-9]*\[W\]", datetitle)
+                Digibutter.timer.weeks = int(re.findall(r'\d+', W.group())[0])
+            except:
+                Digibutter.timer.weeks = 0
+            try:
+                D = re.search("[0-9]*\[D\]", datetitle)
+                Digibutter.timer.days = int(re.findall(r'\d+', D.group())[0])
+            except:
+                Digibutter.timer.days = 0
+            try:
+                h = re.search("[0-9]*\[h\]", datetitle)
+                Digibutter.timer.hours = int(re.findall(r'\d+', h.group())[0])
+            except:
+                Digibutter.timer.hours = 0
+            try:
+                m = re.search("[0-9]*\[m\]", datetitle)
+                Digibutter.timer.minutes = int(re.findall(r'\d+', m.group())[0])
+            except:
+                Digibutter.timer.minutes = 0
+            try:
+                s = re.search("[0-9]*\[s\]", datetitle)
+                Digibutter.timer.seconds = int(re.findall(r'\d+', s.group())[0])
+            except:
+                Digibutter.timer.seconds = 0
+
+            Digibutter.timer.title = datetitle[datetitle.rindex(']')+2:]
+            
+            Digibutter.timer.total_seconds = Digibutter.timer.months * 2629800 + Digibutter.timer.weeks * 604800 + Digibutter.timer.days * 86400 + Digibutter.timer.hours * 3600 + Digibutter.timer.minutes * 60 + Digibutter.timer.seconds
             start = datetime.now(timezone.utc)
             Digibutter.timer.start = start.strftime("%Y-%m-%d %H:%M:%S %Z")
-            Digibutter.timer.end = (start + timedelta(seconds=total_seconds)).strftime("%Y-%m-%d %H:%M:%S %Z")
+            Digibutter.timer.end = (start + timedelta(seconds=Digibutter.timer.total_seconds)).strftime("%Y-%m-%d %H:%M:%S %Z")
 
     def do_logic(self, latest_post, post_id, room_id, content, post_type, username, user_id):
         """
         Determines the response message that NerrBot: ReHatched should reply with and posts the response message as a reply to the latest message in the current room
         """
+
         if content[0:3] == "!rh":
             if content == "!rh":
                 Digibutter.responses.about_message(Digibutter, latest_post, post_id, room_id, content, post_type)
@@ -540,8 +517,6 @@ class Digibutter(BaseNamespace):
                     Digibutter.responses.help_flip_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help xkcd":
                     Digibutter.responses.help_xkcd_message(Digibutter, latest_post, post_id, room_id, content, post_type)
-                elif content == "!rh help quote":
-                    Digibutter.responses.help_quote_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 elif content == "!rh help timer":
                     Digibutter.responses.help_timer_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 else:
@@ -586,7 +561,18 @@ class Digibutter(BaseNamespace):
                 elif content[0:9] == "!rh time ":
                     Digibutter.responses.time_message(Digibutter, latest_post, post_id, room_id, content, post_type)
                 else:
-                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                    if content == "!rh timer":
+                        Digibutter.responses.timer_specify_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                    elif content[0:14] == "!rh timer set ":
+                        Digibutter.responses.timer_set_message(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
+                    elif content[0:17] == "!rh timer delete ":
+                        Digibutter.responses.timer_delete_message(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
+                    elif content == "!rh timer list":
+                        Digibutter.responses.timer_list_message(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
+                    elif content == "!rh timer help":
+                        Digibutter.responses.timer_help_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                    else:
+                        Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)  
             elif content[0:13] == "!rh tictactoe":
                 if content == "!rh tictactoe":
                     Digibutter.responses.tictactoe_specify_message(Digibutter, latest_post, post_id, room_id, content, post_type)
@@ -608,22 +594,7 @@ class Digibutter(BaseNamespace):
                 else:
                     Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
             elif content == "!rh xkcd":
-                Digibutter.responses.latest_xkcd_comic_message(Digibutter, latest_post, post_id, room_id, content, post_type)
-            elif content == "!rh quote":
-                Digibutter.responses.latest_nerr_ebooks_tweets_message(Digibutter, latest_post, post_id, room_id, content, post_type)
-            elif content[0:9] == "!rh timer":
-                if content == "!rh timer":
-                    Digibutter.responses.timer_specify_message(Digibutter, latest_post, post_id, room_id, content, post_type)
-                elif content[0:14] == "!rh timer set ":
-                    Digibutter.responses.timer_set_message(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
-                elif content[0:17] == "!rh timer delete ":
-                    Digibutter.responses.timer_delete_message(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
-                elif content == "!rh timer list":
-                    Digibutter.responses.timer_list_message(Digibutter, latest_post, post_id, room_id, content, post_type, username, user_id)
-                elif content == "!rh timer help":
-                    Digibutter.responses.timer_help_message(Digibutter, latest_post, post_id, room_id, content, post_type)
-                else:
-                    Digibutter.responses.not_recognized_message(Digibutter, latest_post, post_id, room_id, content, post_type)
+                Digibutter.responses.latest_xkcd_comic_message(Digibutter, latest_post, post_id, room_id, content, post_type) 
             elif content[0:35] == "spoiler: !rh disconnect unexpectedly":
                 if content == "!rh disconnect unexpectedly" or content == "spoiler !rh disconnect unexpectedly":
                     Digibutter.responses.disconnect_unexpectedly_specify_message(Digibutter, latest_post, post_id, room_id, content, post_type)
@@ -642,14 +613,14 @@ class Digibutter(BaseNamespace):
             """
             Replies with the about message
             """
-            reply_text = f"--NerrBot: ReHatched--\nVersion: {version}\nUptime: %s\n\nEnter '!rh <command>' to execute a command, or '!rh help' for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus.\nNerrBot: ReHatched was created by and is maintained by TheEvilShadoo https://www.shadoosite.xyz" % counter.count
+            reply_text = f"--NerrBot: ReHatched--\nVersion: {version}\nUptime: %s\n\nEnter \"!rh <command>\" to execute a command, or \"!rh help\" for help.\nNerrBot: ReHatched is based on NerrBot by Gold Prognosticus.\nNerrBot: ReHatched was created by and is maintained by TheEvilShadoo https://www.shadoosite.xyz" % counter.count
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def help_message(self, latest_post, post_id, room_id, content, post_type):
             """
             Replies with the help message
             """
-            reply_text = "Available commands are: yesno, rate, roll, online, discord, echo, time, tictactoe, flip, xkcd, quote, timer\nEnter '!rh help <command>' to learn more."
+            reply_text = "Available commands are: yesno, rate, roll, online, discord, echo, time, tictactoe, flip, xkcd, timer\nEnter \"!rh help <command>\" to learn more."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def help_yesno_message(self, latest_post, post_id, room_id, content, post_type):
@@ -720,13 +691,6 @@ class Digibutter(BaseNamespace):
             Replies with the help message for the xkcd command
             """
             reply_text = "xkcd - Fetches the latest xkcd comic from https://xkcd.com"
-            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
-
-        def help_quote_message(self, latest_post, post_id, room_id, content, post_type):
-            """
-            Replies with the help message for the quote command
-            """
-            reply_text = "quote - Fetches the latest Tweet from the @nerr_ebooks Twitter page (https://twitter.com/nerr_ebooks)"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def help_timer_message(self, latest_post, post_id, room_id, content, post_type):
@@ -833,7 +797,7 @@ class Digibutter(BaseNamespace):
                 max_value = int(content[9:])
             except ValueError:
                 max_value = content[9:]
-                reply_text = f"'{max_value}' is not a number."
+                reply_text = f"\"{max_value}\" is not a number."
                 Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
                 return
             roll = random.randint(min_value, max_value)
@@ -886,7 +850,7 @@ class Digibutter(BaseNamespace):
             try:
                 reply_text = "The current date and time is: %s" % datetime.now(tz=pytz.timezone(f"{tz}")).strftime(f"%a, %B %-d, %Y at %-I:%M:%S %p {tz}")
             except:
-                reply_text = f"'{tz}' is not a valid timezone."
+                reply_text = f"\"{tz}\" is not a valid timezone."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def tictactoe_message(self, latest_post, post_id, room_id, content, post_type):
@@ -913,7 +877,7 @@ class Digibutter(BaseNamespace):
                                 Digibutter.tictactoe.tictactoe_game = ":NerrBot: Rehatched: Turn %s :%s:\n%s" % (Digibutter.tictactoe.turn, Digibutter.tictactoe.player, Digibutter.tictactoe.tictactoe_board)
                             Digibutter.tictactoe.turn += 1
                             if Digibutter.tictactoe.is_winner(Digibutter.tictactoe, Digibutter.tictactoe.values, Digibutter.tictactoe.player_symbol):
-                                reply_text = "%s\nscroll=left: **Congratulations, you won!**\nhttps://www.youtube.com/watch?v=MoI8Z8Dq1yY" % Digibutter.tictactoe.tictactoe_game
+                                reply_text = "%s\nscroll=left: **Congratulations, you won!**\nhttps://www.youtube.com/watch?v=FI0v5QY_nKM" % Digibutter.tictactoe.tictactoe_game
                                 Digibutter.tictactoe.values = None
                                 Digibutter.tictactoe.tictactoe_board = None
                                 Digibutter.tictactoe.tictactoe_game = None
@@ -982,7 +946,7 @@ class Digibutter(BaseNamespace):
             first_player = random.choice([Digibutter.tictactoe.player, "NerrBot: ReHatched"])
             if first_player == Digibutter.tictactoe.player:
                 Digibutter.tictactoe.tictactoe_game = ":%s: Turn %s :NerrBot: Rehatched:\n%s" % (Digibutter.tictactoe.player, Digibutter.tictactoe.turn, Digibutter.tictactoe.tictactoe_board)
-                reply_text = "%s\nA new game has begun! You can go first.\nEnter '!rh tictactoe <x> <y>' to play." % Digibutter.tictactoe.tictactoe_game
+                reply_text = "%s\nA new game has begun! You can go first.\nEnter \"!rh tictactoe <x> <y>\" to play." % Digibutter.tictactoe.tictactoe_game
                 Digibutter.tictactoe.player_symbol = "O"
                 Digibutter.tictactoe.NerrBot_symbol = "X"
             else:
@@ -994,7 +958,7 @@ class Digibutter(BaseNamespace):
                 Digibutter.tictactoe.tictactoe_board = "             |             |             \n     %s     |     %s     |     %s     \n_             |             |             _\n             |             |             \n     %s     |     %s     |     %s     \n_             |             |             _\n             |             |             \n     %s     |     %s     |     %s     \n             |             |" % (Digibutter.tictactoe.values[0], Digibutter.tictactoe.values[1], Digibutter.tictactoe.values[2], Digibutter.tictactoe.values[3], Digibutter.tictactoe.values[4], Digibutter.tictactoe.values[5], Digibutter.tictactoe.values[6], Digibutter.tictactoe.values[7], Digibutter.tictactoe.values[8])
                 Digibutter.tictactoe.turn += 1
                 Digibutter.tictactoe.tictactoe_game = ":NerrBot: Rehatched: Turn %s :%s:\n%s" % (Digibutter.tictactoe.turn, Digibutter.tictactoe.player, Digibutter.tictactoe.tictactoe_board)
-                reply_text = "%s\nA new game has begun! I have gone first.\nEnter '!rh tictactoe <x> <y>' to play." % Digibutter.tictactoe.tictactoe_game
+                reply_text = "%s\nA new game has begun! I have gone first.\nEnter \"!rh tictactoe <x> <y>\" to play." % Digibutter.tictactoe.tictactoe_game
                 Digibutter.tictactoe.player_symbol = "X"
                 Digibutter.tictactoe.NerrBot_symbol = "O"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
@@ -1038,7 +1002,7 @@ class Digibutter(BaseNamespace):
                 number_of_coin_flips = int(content[9:])
             except ValueError:
                 number_of_coin_flips = content[9:]
-                reply_text = f"'{number_of_coin_flips}' is not a number."
+                reply_text = f"\"{number_of_coin_flips}\" is not a number."
                 Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
                 return
             if number_of_coin_flips > 1000000:
@@ -1066,7 +1030,7 @@ class Digibutter(BaseNamespace):
             """
             Replies with the command not recognized message
             """
-            reply_text = "Command not recognised. Use '!rh help' for a list of commands."
+            reply_text = "Command not recognised. Use \"!rh help\" for a list of commands."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def latest_xkcd_comic_message(self, latest_post, post_id, room_id, content, post_type):
@@ -1076,14 +1040,6 @@ class Digibutter(BaseNamespace):
             latest_comic = requests.get("https://xkcd.com/info.0.json")
             data = json.loads(latest_comic.text)
             reply_text = f"color=blue: Title: **{data['title']}**\ncolor=purple: Date (MM/DD/YYYY): **{data['month']}/{data['day']}/{data['year']}**\n{data['img']}\n\ncolor=green: Alt Text: **{data['alt']}**"
-            Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
-
-        def latest_nerr_ebooks_tweets_message(self, latest_post, post_id, room_id, content, post_type):
-            with suppress_stdout():
-                twint.run.Search(twint_config)
-            tweets = twint.output.tweets_list
-            time.sleep(1)
-            reply_text = f"Here is the latest tweet from the @{tweets[0].username} Twitter page:\ncolor=green: {tweets[0].datetime}: {tweets[0].tweet}"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def timer_specify_message(self, latest_post, post_id, room_id, content, post_type):
@@ -1097,7 +1053,7 @@ class Digibutter(BaseNamespace):
             """
             Sets a timer with a user-specified title and begins a countdown until the specified date. Replies with confirmation to the user
             """
-            if fnmatch.fnmatch(content[14:] == "*M *") or fnmatch.fnmatch(content[14:] == "*W *") or fnmatch.fnmatch(content[14:] == "*D *") or fnmatch.fnmatch(content[14:] == "*h *") or fnmatch.fnmatch(content[14:] == "*m *") or fnmatch.fnmatch(content[14:] == "*s *"):
+            if re.search("^[0-9]*\[M\]", content[14:]) or re.search("^[0-9]*\[W\]", content[14:]) or re.search("^[0-9]*\[D\]", content[14:]) or re.search("^[0-9]*\[h\]", content[14:]) or re.search("^[0-9]*\[m\]", content[14:]) or re.search("^[0-9]*\[s\]", content[14:]):
                 Digibutter.timer.username = username
                 Digibutter.timer.user_id = user_id
                 Digibutter.timer.scrape_data(content)
@@ -1112,7 +1068,7 @@ class Digibutter(BaseNamespace):
                 Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
                 Digibutter.timer.reset()
             else:
-                reply_text = "Invalid timer end date/time. The correct format is '!rh timer set _M _W _D _h _m _s <timer title>'.\nIf you wish to specify less than 6 units of precision for the timer end date/time, you may do so instead (ex. '!rh timer set 1M 2D Replay SPM').\nNote: The timer end date/time must be input in **DECREASING** order ([M]onths, [W]eeks, [D]ays, [h]ours, [m]inutes, [s]econds)."
+                reply_text = "Invalid timer end date/time. The correct format is \"!rh timer set _[M] _[W] _[D] _[h] _[m] _[s] <timer title>.\"\nIf you wish to specify less than 6 units of precision for the timer end date/time, you may do so instead (ex. \"!rh timer set 1[M] 2[D] Replay SPM\").\nNote: The timer end date/time must be input in **DECREASING** order ([M]onths, [W]eeks, [D]ays, [h]ours, [m]inutes, [s]econds)."
                 Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def timer_delete_message(self, latest_post, post_id, room_id, content, post_type, username, user_id):
@@ -1126,12 +1082,13 @@ class Digibutter(BaseNamespace):
             for timer in range(len(data)):
                 if data[timer]["user_id"] == user_id and data[timer]["title"] == title:
                     data.pop(timer)
+                    write_json(data, filename="timers.json")
                     break
             else:
-                reply_text = "Sorry, you don't seem to have an ongoing timer with that title.\nPlease run '!rh timer list' to view any ongoing timers you may have."
+                reply_text = "Sorry, you don't seem to have an ongoing timer with the title \"{title}.\"\nPlease run \"!rh timer list\" to view any ongoing timers you may have."
                 Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
                 return
-            reply_text = f"Success! Your timer, {title}, has been deleted."
+            reply_text = f"Success! Your timer \"{title}\" has been deleted."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def timer_list_message(self, latest_post, post_id, room_id, content, post_type, username, user_id):
@@ -1169,7 +1126,7 @@ class Digibutter(BaseNamespace):
             """
             Asks the user to include the two secret passcodes in order to use the secret disconnect unexpectedly command
             """
-            reply_text = "Please include the passcodes for the left and right safety locks in a spoiler-tagged message order to proceed with the disconnecting operation. The complete command should be formatted as such: 'spoiler: !rh disconnect -left ____ -right ____'. Those who know the codes are encouraged to use them responsibly..."
+            reply_text = "Please include the passcodes for the left and right safety locks in a spoiler-tagged message order to proceed with the disconnecting operation. The complete command should be formatted as such: \"spoiler: !rh disconnect -left ____ -right ____.\" Those who know the codes are encouraged to use them responsibly..."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def disconnect_unexpectedly_accept_message(self, latest_post, post_id, room_id, content, post_type):
