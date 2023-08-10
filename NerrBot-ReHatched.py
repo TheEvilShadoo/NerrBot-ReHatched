@@ -153,7 +153,7 @@ class Digibutter(BaseNamespace):
         sio.wait(.2)
         sio.emit("posts:chats", {"room": "sidebar"}, Digibutter.on_NerrChat_chatlog_response)
         sio.wait(.2)
-        sio.emit("posts:create", {"content":f"color=red: NerrBot System v{version} Online","post_type":"","roomId":"sidebar","source":"db"})
+        sio.emit("posts:create", {"content":f"color=red: I disconnected unexpectedly there, sorry!","post_type":"","roomId":"sidebar","source":"db"})
 
     def on_all_posts_index_response(self):
         print(colorama.Fore.WHITE + "\n> " + colorama.Fore.BLUE + "Received posts index for room " + colorama.Fore.LIGHTWHITE_EX + "All Posts" + colorama.Fore.RESET)
