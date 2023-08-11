@@ -848,7 +848,7 @@ class Digibutter(BaseNamespace):
             except:
                 tz = "UTC"
             try:
-                reply_text = "The current date and time is: %s" % pytz.timezone(f"{tz}").localize(datetime.now()).strftime(f"%a, %B %-d, %Y at %-I:%M:%S %p {tz}")
+                reply_text = "The current date and time is: %s" % datetime.now(tz=pytz.timezone(f"{tz}")).strftime(f"%a, %B %-d, %Y at %-I:%M:%S %p {tz}")
             except:
                 reply_text = f"\"{tz}\" is not a valid timezone."
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
