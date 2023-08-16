@@ -775,7 +775,7 @@ class Digibutter(BaseNamespace):
             """
             Replies with a permanent invite link to the Digibutter Unnoficial Discord server (D.U.D.)
             """
-            reply_text = "Digibutter Unnoficial Discord (D.U.D.) official invite link: https://discord.gg/fRnV3kt"
+            reply_text = "Digibutter Unnoficial Discord (D.U.D.) official invite link: https://discord.gg/qmVmhHzgNM"
             Digibutter.reply(Digibutter, latest_post, post_id, room_id, content, post_type, reply_text)
 
         def default_roll_message(self, latest_post, post_id, room_id, content, post_type):
@@ -845,8 +845,10 @@ class Digibutter(BaseNamespace):
             """
             try:
                 tz = content[9:12]
+                print(tz)
             except:
                 tz = "UTC"
+                print("utclol")
             try:
                 reply_text = "The current date and time is: %s" % datetime.now(tz=pytz.timezone(f"{tz}")).strftime(f"%a, %B %-d, %Y at %-I:%M:%S %p {tz}")
             except:
